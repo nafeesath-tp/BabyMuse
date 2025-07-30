@@ -1,0 +1,39 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="max-w-4xl mx-auto p-4">
+    <h2 class="text-2xl font-semibold mb-4">📦 My Orders</h2>
+
+    {% if orders %}
+        <ul class="space-y-4">
+            {% for order in orders %}
+                <li class="border p-4 rounded bg-white shadow">
+                    <p><strong>Order ID:</strong> {{ order.order_id }}</p>
+                    <p><strong>Status:</strong> {{ order.status }}</p>
+                    <p><strong>Total:</strong> ₹{{ order.total_price }}</p>
+                    <p><strong>Date:</strong> {{ order.created_at|date:"d M Y H:i" }}</p>
+
+                    <div class="mt-2 space-x-4">
+                        <!-- View Order Details -->
+                        <a href="{% url 'orders:order_detail' order.id %}" class="text-blue-600 hover:underline">📝 View Details</a>
+
+                        <!-- Cancel Order -->
+                        {% if order.status != 'Cancelled' and order.status != 'Delivered' %}
+                            <a href="{% url 'orders:cancel_order' order.id %}" class="text-red-600 hover:underline">❌ Cancel Order</a>
+                        {% endif %}
+
+                        <!-- Return Order -->
+                        {% if order.status == 'Delivered' and not order.is_returned %}
+                            <a href="{% url 'orders:return_order' order.id %}" class="text-yellow-600 hover:underline">↩️ Return Order</a>
+                        {% endif %}
+
+                        <!-- Download Invoice -->
+                        <a href="{% url 'orders:download_invoice' order.id %}" class="text-green-600 hover:underline">🧾 Download Invoice</a>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-gray-600">You haven't placed any orders yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

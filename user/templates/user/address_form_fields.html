@@ -1,0 +1,31 @@
+{% load form_tags %}
+
+<!-- Name -->
+<label class="block mb-2">Name:</label>
+{{ form.name|add_class:"w-full mb-4 border px-4 py-2 rounded" }}
+
+<!-- Phone -->
+<label class="block mb-2">Phone:</label>
+{{ form.phone|add_class:"w-full mb-4 border px-4 py-2 rounded" }}
+
+<!-- Address Line -->
+<label class="block mb-2">Address Line:</label>
+{{ form.address_line|add_class:"w-full mb-4 border px-4 py-2 rounded" }}
+
+<!-- City -->
+<label class="block mb-2">City:</label>
+{{ form.city|add_class:"w-full mb-4 border px-4 py-2 rounded" }}
+
+<!-- State -->
+<label class="block mb-2">State:</label>
+{{ form.state|add_class:"w-full mb-4 border px-4 py-2 rounded" }}
+
+<!-- Postal Code -->
+<label class="block mb-2">Postal Code:</label>
+{{ form.postal_code|add_class:"w-full mb-4 border px-4 py-2 rounded" }}
+
+<!-- Is Default -->
+<label class="inline-flex items-center mt-2">
+    {{ form.is_default }}
+    <span class="ml-2">Set as default address</span>
+</label>

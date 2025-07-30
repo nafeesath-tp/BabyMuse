@@ -1,0 +1,79 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4 bg-white shadow rounded">
+    <h2 class="text-xl font-semibold mb-4">📝 Order Details</h2>
+    <p><strong>Order ID:</strong> {{ order.order_id }}</p>
+    <p><strong>Status:</strong> {{ order.status }}</p>
+    <p><strong>Total:</strong> ₹{{ order.total_price }}</p>
+    <p><strong>Address:</strong> {{ order.address }}</p>
+    <p><strong>Ordered On:</strong> {{ order.created_at|date:"d M Y H:i" }}</p>
+
+    <hr class="my-4">
+
+    <h3 class="text-lg font-semibold mb-2">Items:</h3>
+    <ul class="space-y-4">
+        {% for item in order.items.all %}
+        <li class="flex justify-between items-start border-b pb-3">
+            <div>
+                <span class="font-medium">{{ item.product.name }}</span><br>
+                <small>{{ item.quantity }} x ₹{{ item.price }}</small><br>
+                <small>Subtotal: ₹{{ item.subtotal }}</small>
+            </div>
+            <div class="text-right">
+                {% if order.status == 'Delivered' %}
+                    {% if item.is_returned %}
+                        <span class="text-green-600 text-sm font-medium">✅ Returned</span>
+                    {% elif item.is_return_requested %}
+                        <span class="text-yellow-600 text-sm font-medium">⏳ Return Requested</span>
+                    {% else %}
+                        <a href="{% url 'orders:return_item' item.id %}"
+                           class="inline-block bg-yellow-500 text-white text-sm px-3 py-1 rounded hover:bg-yellow-600 transition">
+                            ↩️ Return Item
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- ✅ Admin Return Status Table -->
+    <h3 class="text-lg font-semibold mt-8 mb-3">🔎 Return Status Overview</h3>
+
+    <table class="w-full border border-gray-200 rounded shadow-sm mb-6">
+        <thead class="bg-gray-100 text-left">
+            <tr>
+                <th class="p-3 border">Product</th>
+                <th class="p-3 border">Quantity</th>
+                <th class="p-3 border">Price</th>
+                <th class="p-3 border">Subtotal</th>
+                <th class="p-3 border">Return Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.items.all %}
+            <tr class="hover:bg-gray-50">
+                <td class="p-3 border">{{ item.product.name }}</td>
+                <td class="p-3 border">{{ item.quantity }}</td>
+                <td class="p-3 border">₹{{ item.price }}</td>
+                <td class="p-3 border">₹{{ item.subtotal }}</td>
+                <td class="p-3 border">
+                    {% if item.is_returned %}
+                        <span class="text-green-600 font-medium">✅ Returned</span>
+                    {% elif item.is_return_requested %}
+                        <span class="text-yellow-600 font-medium">⏳ Return Requested</span>
+                    {% else %}
+                        <span class="text-red-600 font-medium">❌ Not Returned</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-6">
+        <a href="{% url 'orders:my_orders' %}" class="text-blue-600 hover:underline">← Back to My Orders</a>
+    </div>
+</div>
+{% endblock %}

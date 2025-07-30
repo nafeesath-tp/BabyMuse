@@ -1,0 +1,46 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="text-center py-10">
+    <h2 class="text-xl font-bold mb-4">Complete Your Payment</h2>
+    <button id="rzp-button" class="bg-pink-600 text-white px-6 py-3 rounded">Pay Now</button>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    const options = {
+        "key": "{{ razorpay_key_id }}",
+        "amount": "{{ amount }}",
+        "currency": "INR",
+        "name": "BabyMuse",
+        "description": "Order Payment",
+        "order_id": "{{ razorpay_order_id }}",
+        "handler": function (response){
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = "{% url 'orders:razorpay_success' %}";
+
+            const csrf = document.createElement("input");
+            csrf.name = "csrfmiddlewaretoken";
+            csrf.value = "{{ csrf_token }}";
+            form.appendChild(csrf);
+
+            const paymentId = document.createElement("input");
+            paymentId.name = "razorpay_payment_id";
+            paymentId.value = response.razorpay_payment_id;
+            form.appendChild(paymentId);
+
+            document.body.appendChild(form);
+            form.submit();
+        },
+        "theme": {
+            "color": "#f43f5e"
+        }
+    };
+    const rzp = new Razorpay(options);
+    document.getElementById("rzp-button").onclick = function(e){
+        rzp.open();
+        e.preventDefault();
+    }
+</script>
+{% endblock %}

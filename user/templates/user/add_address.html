@@ -1,0 +1,136 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load form_tags %}
+
+{% block extra_meta %}
+  <meta http-equiv="Cache-Control" content="no-store" />
+{% endblock %}
+
+{% block content %}
+<section class="max-w-xl mx-auto py-10 px-4">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">➕ Add Address</h2>
+
+  <div class="bg-white p-6 rounded-xl shadow-md">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4 shadow">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form id="address-form" method="POST" class="space-y-4">
+      {% csrf_token %}
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+
+      <!-- Name -->
+      <label class="block font-medium">Full Name:</label>
+      {{ form.name|add_class:"w-full mb-1 border px-4 py-2 rounded" }}
+      {% for error in form.name.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- Phone -->
+      <label class="block font-medium">Phone Number:</label>
+      {{ form.phone|add_class:"w-full mb-1 border px-4 py-2 rounded" }}
+      {% for error in form.phone.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- Address Line -->
+      <label class="block font-medium">Address:</label>
+      {{ form.address_line|add_class:"w-full mb-1 border px-4 py-2 rounded" }}
+      {% for error in form.address_line.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- City -->
+      <label class="block font-medium">City:</label>
+      {{ form.city|add_class:"w-full mb-1 border px-4 py-2 rounded" }}
+      {% for error in form.city.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- State -->
+      <label class="block font-medium">State:</label>
+      {{ form.state|add_class:"w-full mb-1 border px-4 py-2 rounded" }}
+      {% for error in form.state.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- Postal Code -->
+      <label class="block font-medium">Postal Code:</label>
+      {{ form.postal_code|add_class:"w-full mb-1 border px-4 py-2 rounded" }}
+      {% for error in form.postal_code.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- Default Checkbox -->
+      <label class="flex items-center gap-2 font-medium">
+        {{ form.is_default }}
+        <span>Set as default address</span>
+      </label>
+      {% for error in form.is_default.errors %}
+        <p class="text-sm text-red-600">{{ error }}</p>
+      {% endfor %}
+
+      <!-- Submit Button -->
+      <div class="pt-4">
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded shadow">
+          💾 Save Address
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ✅ JavaScript for Auto Fill -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const postalInput = document.querySelector("#id_postal_code");
+    const cityInput = document.querySelector("#id_city");
+    const stateInput = document.querySelector("#id_state");
+    const form = document.getElementById("address-form");
+
+    // ✅ Auto-fill City & State on Pincode entry
+    postalInput.addEventListener("blur", function() {
+        const pincode = postalInput.value.trim();
+
+        if (pincode.length === 6) {
+            cityInput.value = "Loading...";
+            stateInput.value = "Loading...";
+
+            fetch(`https://api.postalpincode.in/pincode/${pincode}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data[0].Status === "Success") {
+                    const postOffice = data[0].PostOffice[0];
+                    cityInput.value = postOffice.District || "";
+                    stateInput.value = postOffice.State || "";
+                } else {
+                    cityInput.value = "";
+                    stateInput.value = "";
+                    alert("Invalid Pincode! Please check and try again.");
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching pincode data:", error);
+                cityInput.value = "";
+                stateInput.value = "";
+                alert("Failed to fetch data. Please try again.");
+            });
+        }
+    });
+
+    // ✅ Prevent form submission if City or State is empty
+    form.addEventListener("submit", function(e) {
+        if (cityInput.value === "" || stateInput.value === "") {
+            e.preventDefault();
+            alert("Please enter a valid postal code so that City and State are filled.");
+        }
+    });
+});
+</script>
+{% endblock %}

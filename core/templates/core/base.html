@@ -1,0 +1,232 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="csrf-token" content="{{ csrf_token }}">
+
+  {% block extra_meta %}{% endblock %}
+  <title>{% block title %}BabyMuse{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+
+<body class="bg-pink-50 font-sans text-gray-800">
+  <header class="bg-white shadow">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between py-4">
+
+      <!-- Logo -->
+      <div class="flex items-center space-x-3">
+        <a href="{% url 'home' %}">
+          <img src="{% static 'images/logo.png' %}" alt="BabyMuse Logo" class="h-20 w-auto">
+        </a>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="hidden md:flex space-x-8 text-gray-700 font-medium">
+        <a href="{% url 'home' %}" class="hover:text-pink-500 transition">Home</a>
+        <a href="{% url 'shop:shop' %}" class="hover:text-pink-500 transition">Shop</a>
+        <a href="{% url 'about' %}" class="hover:text-pink-500 transition">About</a>
+        <a href="{% url 'contact' %}" class="hover:text-pink-500 transition">Contact</a>
+      </nav>
+
+      <!-- Icons + Search + Profile -->
+      <div class="flex items-center space-x-4">
+        {% if request.user.is_authenticated %}
+        <!-- Wishlist Icon -->
+        <a href="{% url 'shop:wishlist' %}" class="relative text-gray-600 hover:text-pink-500 text-xl">
+          <i class="fas fa-heart"></i>
+          {% if wishlist_count %}
+          <span
+            class="absolute -top-2 -right-2 bg-pink-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+            {{ wishlist_count }}
+          </span>
+          {% endif %}
+        </a>
+
+        <!-- Cart Icon -->
+        <a href="{% url 'shop:cart' %}" class="relative text-gray-600 hover:text-pink-500 text-xl">
+          <i class="fa-solid fa-cart-shopping"></i>
+          <span id="cart-count"
+            class="absolute -top-2 -right-2 bg-pink-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+            {{ cart_count }}
+          </span>
+        </a>
+        {% else %}
+        <!-- Show icons but redirect to login -->
+        <a href="{% url 'user:user_login' %}?next={% url 'shop:wishlist' %}"
+          class="text-gray-600 hover:text-pink-500 text-xl">
+          <i class="fas fa-heart"></i>
+        </a>
+        <a href="{% url 'user:user_login' %}?next={% url 'shop:cart' %}" class="text-gray-600 hover:text-pink-500 text-xl">
+          <i class="fa-solid fa-cart-shopping"></i>
+        </a>
+        {% endif %}
+
+        {% if request.user.is_authenticated %}
+        <!-- Avatar + Dropdown with JavaScript toggle -->
+        <div class="relative" id="profile-dropdown-container">
+          <button id="profile-button" class="flex items-center gap-2 focus:outline-none">
+            {% if request.user.profile.image %}
+            <img src="{{ request.user.profile.image.url }}" alt="Profile"
+              class="w-8 h-8 rounded-full object-cover border border-gray-300">
+            {% else %}
+            <div
+              class="w-8 h-8 flex items-center justify-center rounded-full bg-pink-500 text-white font-bold uppercase">
+              {{ request.user.first_name|default:request.user.username|first }}
+            </div>
+            {% endif %}
+          </button>
+
+          <!-- Dropdown menu -->
+          <div id="profile-dropdown"
+            class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg z-50 hidden">
+            <a href="{% url 'user:profile' %}" class="block px-4 py-2 hover:bg-gray-100">👤 My Profile</a>
+            <!-- ✅ Fixed line below -->
+            <a href="{% url 'orders:my_orders' %}" class="block px-4 py-2 hover:bg-gray-100">📦 My Orders</a>
+            <a href="{% url 'shop:wishlist' %}" class="block px-4 py-2 hover:bg-gray-100">❤️ Wishlist</a>
+            <hr class="my-1">
+            <a href="{% url 'user:user_logout' %}" class="block px-4 py-2 text-red-600 hover:bg-gray-100">🚪 Logout</a>
+          </div>
+        </div>
+        {% else %}
+        <!-- Guest: Login/Signup -->
+        <a href="{% url 'user:user_login' %}"
+          class="inline-flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white font-medium py-2 px-4 rounded-full shadow transition duration-200">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </a>
+        {% endif %}
+
+        <!-- Search -->
+        <form action="{% url 'search' %}" method="get"
+          class="flex items-center border border-gray-300 rounded-full overflow-hidden">
+          <input type="text" name="q" placeholder="Search..." class="px-3 py-1 outline-none text-sm text-gray-700">
+          <button type="submit" class="bg-pink-500 px-3 py-1 text-white">
+            <i class="fas fa-search"></i>
+          </button>
+        </form>
+      </div>
+  </header>
+
+  <!-- Page Content -->
+  <main class="max-w-6xl mx-auto py-10 px-6">
+    {% if messages %}
+    <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-4">
+      {% for message in messages %}
+      <div class="flex items-center gap-3 max-w-sm px-4 py-3 rounded-lg shadow-lg text-sm animate-slide-in
+        {% if message.tags == 'success' %}
+          bg-green-100 text-green-800 border border-green-400
+        {% elif message.tags == 'error' %}
+          bg-red-100 text-red-800 border border-red-400
+        {% elif message.tags == 'warning' %}
+          bg-yellow-100 text-yellow-800 border border-yellow-400
+        {% else %}
+          bg-blue-100 text-blue-800 border border-blue-400
+        {% endif %}
+      ">
+        <span>{{ message }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gradient-to-b from-blue-100 to-pink-100 pt-10">
+    <!-- Newsletter -->
+    <div class="text-center mb-8 px-4">
+      <h2 class="text-xl font-semibold text-gray-700">Newsletter</h2>
+      <p class="text-sm text-gray-600">Make every giggle personal — shop customized baby essentials!</p>
+      <form action="#" method="POST" class="mt-4 flex justify-center">
+        <input type="email" name="email" placeholder="Enter your email"
+          class="px-4 py-2 border rounded-l-full outline-none w-64 text-sm">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-r-full text-sm hover:bg-blue-600">
+          Join
+        </button>
+      </form>
+    </div>
+
+    <!-- Main Footer Content -->
+    <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8 text-sm text-gray-700 py-10">
+      <!-- Brand + Social -->
+      <div>
+        <img src="{% static '/images/logo.png' %}" alt="BabyMuse Logo" class="h-20 mb-2 ml-4">
+        <div class="flex space-x-4 text-pink-500 text-lg">
+          <a href="#"><i class="fab fa-instagram"></i></a>
+          <a href="#"><i class="fab fa-facebook"></i></a>
+          <a href="#"><i class="fab fa-twitter"></i></a>
+          <a href="#"><i class="fab fa-pinterest"></i></a>
+        </div>
+      </div>
+
+      <!-- My Account -->
+      <div>
+        <h3 class="font-semibold mb-2">My account</h3>
+        <ul class="space-y-1">
+          <li><a href="#">Track my order</a></li>
+          <li><a href="#">Terms of use</a></li>
+          <li><a href="#">Wishlist</a></li>
+          <li><a href="#">Submit Your Feedback</a></li>
+        </ul>
+      </div>
+
+      <!-- Customer Service -->
+      <div>
+        <h3 class="font-semibold mb-2">Customer service</h3>
+        <ul class="space-y-1">
+          <li><a href="#">About Us</a></li>
+          <li><a href="tel:1234567688" class="text-blue-600">123-456-7688</a></li>
+          <li><a href="mailto:info@example.com" class="text-blue-600">info@example.com</a></li>
+        </ul>
+      </div>
+
+      <!-- Policy -->
+      <div>
+        <h3 class="font-semibold mb-2">Policy</h3>
+        <ul class="space-y-1">
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Cookie Policy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="text-center text-xs text-gray-500 py-4 border-t border-pink-200">
+      © 2025 | BabyMuse | All Rights Reserved. | Personalize for your little ones
+    </div>
+  </footer>
+
+  <script>
+    setTimeout(() => {
+      const toast = document.getElementById('toast-container');
+      if (toast) {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+      }
+    }, 3000);
+  </script>
+  <script>
+    // Toggle dropdown visibility
+    const dropdownBtn = document.getElementById('profile-button');
+    const dropdownMenu = document.getElementById('profile-dropdown');
+
+    dropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownMenu.classList.toggle('hidden');
+    });
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('profile-dropdown-container').contains(e.target)) {
+        dropdownMenu.classList.add('hidden');
+      }
+    });
+  </script>
+
+</body>
+
+</html>

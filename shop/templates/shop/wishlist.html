@@ -1,0 +1,113 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-4">
+  <h2 class="text-2xl font-semibold mb-4">My Wishlist</h2>
+
+  {% if wishlist_items %}
+  <ul class="space-y-4">
+    {% for item in wishlist_items %}
+    <li class="flex justify-between items-center border p-3">
+      <div class="flex gap-4 items-center">
+        <img src="{{ item.product.primary_image }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-md">
+        <div>
+          <h3 class="font-bold">{{ item.product.name }}</h3>
+          <p class="text-sm text-gray-600">Size: {{ item.variant.size }}</p>
+        </div>
+      </div>
+      <div class="text-right space-x-2">
+        <button class="add-to-cart-btn text-green-600 hover:underline"
+                data-product-id="{{ item.product.id }}"
+                data-variant-id="{{ item.variant.id }}">
+          Add to Cart
+        </button>
+        <button class="remove-from-wishlist-btn text-red-600 hover:underline"
+                data-product-id="{{ item.product.id }}">
+          Remove
+        </button>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No items in wishlist.</p>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+
+  // ✅ Add to Cart
+  document.querySelectorAll(".add-to-cart-btn").forEach(button => {
+    button.addEventListener("click", function () {
+      const productId = this.dataset.productId;
+      const variantId = this.dataset.variantId;
+
+      fetch("{% url 'shop:ajax_add_to_cart' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ product_id: productId, variant_id: variantId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          document.getElementById("cart-count").innerText = data.cart_count;
+          showToast("Added to cart ✅");
+          this.closest('li').remove();
+        } else {
+          showToast(data.message || "Failed to add to cart ❌", "error");
+        }
+      })
+      .catch(() => {
+        showToast("Something went wrong 😢", "error");
+      });
+    });
+  });
+
+  // ✅ Remove from Wishlist
+  document.querySelectorAll(".remove-from-wishlist-btn").forEach(button => {
+    button.addEventListener("click", function () {
+      const productId = this.dataset.productId;
+
+      fetch("{% url 'shop:ajax_remove_from_wishlist' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ product_id: productId })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          this.closest('li').remove();
+          showToast("Removed from wishlist 🗑️");
+        } else {
+          showToast("Error removing item ❌", "error");
+        }
+      });
+    });
+  });
+
+  // ✅ Toast Notification
+  function showToast(message, type = "success") {
+    const toast = document.createElement("div");
+    toast.innerText = message;
+    toast.className =
+      "fixed top-5 right-5 px-4 py-2 rounded shadow z-50 text-white " +
+      (type === "error" ? "bg-red-600" : "bg-green-600");
+
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 500);
+    }, 3000);
+  }
+});
+</script>
+{% endblock %}

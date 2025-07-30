@@ -1,0 +1,40 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-xl font-semibold mb-4 text-yellow-600">↩️ Return Order</h2>
+
+    <p>
+        You are returning order <strong>{{ order.order_id }}</strong>.<br>
+        Please provide the reason below to help us improve our service:
+    </p>
+
+    <form method="post" class="mt-4 space-y-4">
+        {% csrf_token %}
+        
+        <!-- Show form-level (non-field) errors if any -->
+        {% if form.non_field_errors %}
+            <div class="text-red-600 text-sm">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div>
+            {{ form.reason.label_tag }}
+            {{ form.reason }}
+            {% if form.reason.errors %}
+                <p class="text-red-500 text-sm mt-1">
+                    {{ form.reason.errors|striptags }}
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded transition">
+                Submit Return
+            </button>
+            <a href="{% url 'orders:order_detail' order.id %}" class="text-blue-600 hover:underline">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

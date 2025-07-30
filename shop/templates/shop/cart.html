@@ -1,0 +1,176 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load cart_extras %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto p-6">
+  <h2 class="text-3xl font-bold mb-6">🛒 My Cart</h2>
+
+  {% if cart_items %}
+  <div class="overflow-x-auto">
+    <table class="w-full border text-left text-sm">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="p-4">Image</th>
+          <th class="p-4">Product</th>
+          <th class="p-4">Price</th>
+          <th class="p-4">Quantity</th>
+          <th class="p-4">Total</th>
+          <th class="p-4">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in cart_items %}
+        <tr id="cart-row-{{ item.variant.id }}">
+          <td class="p-4">
+            <img src="{{ item.product.images.first.image.url }}" alt="{{ item.product.name }}" class="w-16 h-16 object-cover rounded">
+          </td>
+
+          <td>
+  {{ item.product.name }}
+  {% if item.variant %}
+    <br>
+    <span class="text-sm text-gray-600">
+      {% if item.variant.size %} Size: {{ item.variant.size }} {% endif %}
+     
+    </span>
+  {% endif %}
+</td>
+
+
+          <td class="p-4">
+    {% if item.price_to_show < item.product.price %}
+      <span class="text-gray-500 line-through">₹{{ item.product.price }}</span><br>
+      <span class="text-green-600 font-bold">₹{{ item.price_to_show|floatformat:2 }}</span>
+    {% else %}
+      <span class="font-bold">₹{{ item.price_to_show|floatformat:2 }}</span>
+    {% endif %}
+</td>
+
+
+          <td class="p-4">
+            <div class="flex items-center gap-2">
+              <button class="minus-btn px-2 py-1 bg-gray-200 rounded" data-product-id="{{ item.variant.id }}">-</button>
+              <input type="number" class="w-16 px-2 py-1 border rounded quantity-input"
+                     data-product-id="{{ item.variant.id }}" value="{{ item.quantity }}" min="1" max="3" readonly>
+              <button class="plus-btn px-2 py-1 bg-gray-200 rounded" data-product-id="{{ item.variant.id }}">+</button>
+            </div>
+          </td>
+
+          <td class="p-4" id="row-total-{{ item.variant.id}}">
+            <strong>₹{{ item.total_price|floatformat:2 }}</strong>
+          </td>
+
+          <td class="p-4">
+            <button onclick="removeFromCart('{{ item.variant.id }}')"
+                    class="text-red-600 hover:underline">Remove</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Total Cart Price -->
+  <div class="text-right mt-6 text-xl font-bold text-pink-700">
+    Total Cart Price = <span id="total-cart-price">₹{{ total_price|floatformat:2 }}</span>
+  </div>
+  <!-- Proceed to Checkout Button -->
+  <div class="text-right mt-4">
+    <a href="{% url 'orders:checkout' %}"
+       class="inline-block bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition">
+        🚚 Proceed to Checkout
+    </a>
+  </div>
+
+  {% else %}
+  <p class="text-gray-600 text-lg">Your cart is empty.</p>
+  {% endif %}
+</div>
+
+<!-- Toast -->
+<div id="toast"
+  class="fixed top-5 right-5 bg-green-100 text-green-800 border border-green-400 px-4 py-2 rounded shadow hidden z-50">
+</div>
+
+<!-- AJAX Script -->
+<script>
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.classList.remove("hidden");
+    setTimeout(() => toast.classList.add("hidden"), 2000);
+  }
+
+  function removeFromCart(productId) {
+    fetch("{% url 'shop:ajax_remove_from_cart' %}", {
+      method: "POST",
+      headers: {
+        'X-CSRFToken': '{{ csrf_token }}',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ product_id: productId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          const row = document.getElementById(`cart-row-${productId}`);
+          if (row) row.remove();
+
+          // Update total price
+          if (data.new_total_price !== undefined) {
+            document.getElementById("total-cart-price").innerText = `₹${parseFloat(data.new_total_price).toFixed(2)}`;
+          }
+
+          showToast(data.message);
+        }
+      });
+  }
+
+  // Quantity change handlers
+  document.querySelectorAll('.minus-btn, .plus-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const productId = this.dataset.productId;
+      const input = document.querySelector(`.quantity-input[data-product-id="${productId}"]`);
+      let quantity = parseInt(input.value);
+
+      if (this.classList.contains('minus-btn') && quantity > 1) {
+        quantity--;
+      } else if (this.classList.contains('plus-btn')) {
+        if (quantity >= 3) {
+          showToast("Maximum quantity is 3");
+          return;
+        }
+        quantity++;
+      }
+
+      input.value = quantity;
+
+      // Update backend
+      fetch(`/shop/cart/update/${productId}/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `quantity=${quantity}`
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            // Update row total
+            document.getElementById(`row-total-${productId}`).innerHTML =
+              `₹${parseFloat(data.unit_price).toFixed(2)} × ${quantity} = <strong>₹${parseFloat(data.item_total).toFixed(2)}</strong>`;
+
+            // Update cart total
+            document.getElementById("total-cart-price").innerText = `₹${parseFloat(data.new_total).toFixed(2)}`;
+
+            showToast(data.message);
+          } else {
+            showToast(data.message || "Failed to update.");
+          }
+        });
+    });
+  });
+</script>
+{% endblock %}

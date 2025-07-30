@@ -1,0 +1,188 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+
+<div class="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-md mt-10">
+  <h2 class="text-2xl font-semibold mb-6 text-center">Add New Product</h2>
+
+  {% if messages %}
+  <div class="mb-4">
+    {% for message in messages %}
+    <p class="text-sm text-{{ message.tags }}-600">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-5">
+    {% csrf_token %}
+
+    <div>
+      <label class="block mb-1 font-medium">Product Name</label>
+      <input type="text" name="name" placeholder="Product Name" class="w-full px-4 py-2 border rounded" required />
+    </div>
+
+    <div>
+      <label class="block mb-1 font-medium">Category</label>
+      <select name="category" id="category" class="w-full px-4 py-2 border rounded" required>
+        <option value="">-- Select Category --</option>
+        {% for category in categories %}
+        <option value="{{ category.id }}" data-discount="{{ category.discount_percent|default:0 }}">
+            {{ category.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block mb-1 font-medium">Description</label>
+      <textarea name="description" placeholder="Product Description" class="w-full px-4 py-2 border rounded" rows="4" required></textarea>
+    </div>
+
+    <div>
+      <label class="block mb-1 font-medium">Price (₹)</label>
+      <input type="number" name="price" id="price" step="0.01" placeholder="0.00" class="w-full px-4 py-2 border rounded" required />
+    </div>
+
+    <!-- Product Offer Discount -->
+    <label class="block text-gray-700 font-medium mb-1">Product Offer (%)</label>
+    <input type="number" name="discount_percent" value="0" min="0" max="100"
+          class="form-input w-full" id="discount_percent">
+
+    <!-- Category Offer Info -->
+    <p class="mt-2 text-gray-600 text-sm">
+        📂 Category Offer: <strong id="category_offer">0%</strong>
+    </p>
+
+    <!-- Discounted Price Preview -->
+    <p class="mt-2 text-gray-600 text-sm">
+        💸 Final Price: ₹<span id="discounted_preview">0.00</span>
+    </p>
+
+    <!-- ✅ Image Upload with Crop -->
+    <h4 class="font-semibold mt-4">Upload Images (3 Required):</h4>
+    <div class="flex gap-4 my-2 flex-wrap">
+{% for i in "123" %}
+<div class="flex flex-col items-center">
+  <img src="/static/images/default-img.jpg" class="w-24 h-24 object-cover rounded shadow preview-img" />
+  <label for="image_input_{{ i }}" class="text-sm mt-2 text-blue-500 hover:underline cursor-pointer">
+    📷 Upload
+  </label>
+  <input type="file" id="image_input_{{ i }}" name="images" accept="image/*" class="hidden" />
+</div>
+{% endfor %}
+
+    </div>
+
+    <div class="flex justify-end">
+      <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+        Add Product
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- ✅ Cropper Modal -->
+<div id="cropperModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white p-4 rounded shadow-md w-96">
+    <h3 class="text-lg font-bold mb-2">Crop Image</h3>
+    <div class="w-full h-64">
+      <img id="cropperImage" class="max-w-full" />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button id="cropCancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancel</button>
+      <button id="cropSave" class="bg-blue-600 text-white px-4 py-2 rounded">Crop & Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JS Includes -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // ✅ Cropper.js Logic
+    let cropper;
+    let currentInput;
+    const modal = document.getElementById("cropperModal");
+    const cropperImage = document.getElementById("cropperImage");
+    const cropSaveBtn = document.getElementById("cropSave");
+    const cropCancelBtn = document.getElementById("cropCancel");
+
+    // Trigger modal on file select
+    document.querySelectorAll("input[type='file']").forEach(input => {
+        input.addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentInput = input;
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    cropperImage.src = event.target.result;
+                    modal.classList.remove("hidden");
+                    cropperImage.onload = function () {
+                        if (cropper) cropper.destroy();
+                        cropper = new Cropper(cropperImage, {
+                            aspectRatio: 1, // ✅ Square crop
+                            viewMode: 1
+                        });
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    // Cancel crop
+    cropCancelBtn.addEventListener("click", function () {
+        modal.classList.add("hidden");
+        if (cropper) cropper.destroy();
+        currentInput.value = "";
+    });
+
+    // Save cropped image
+    cropSaveBtn.addEventListener("click", function () {
+        const canvas = cropper.getCroppedCanvas({ width: 600, height: 600 });
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const preview = currentInput.closest("div").querySelector("img.preview-img");
+            preview.src = url;
+            const file = new File([blob], "cropped_image.jpg", { type: "image/jpeg" });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            currentInput.files = dataTransfer.files;
+
+            modal.classList.add("hidden");
+            cropper.destroy();
+        }, "image/jpeg");
+    });
+
+    // ✅ Discount Logic
+    const discountInput = document.getElementById("discount_percent");
+    const priceInput = document.getElementById("price");
+    const categorySelect = document.getElementById("category");
+    const categoryOfferSpan = document.getElementById("category_offer");
+    const preview = document.getElementById("discounted_preview");
+
+    let categoryDiscount = 0;
+
+    function updateFinalPrice() {
+        const basePrice = parseFloat(priceInput.value) || 0;
+        const productDiscount = parseFloat(discountInput.value) || 0;
+        const bestDiscount = Math.max(productDiscount, categoryDiscount);
+        const finalPrice = basePrice - (basePrice * bestDiscount / 100);
+        preview.textContent = finalPrice.toFixed(2);
+    }
+
+    discountInput.addEventListener("input", updateFinalPrice);
+    priceInput.addEventListener("input", updateFinalPrice);
+
+    categorySelect.addEventListener("change", function() {
+        categoryDiscount = parseFloat(this.selectedOptions[0].dataset.discount || 0);
+        categoryOfferSpan.textContent = categoryDiscount + "%";
+        updateFinalPrice();
+    });
+
+    updateFinalPrice();
+});
+</script>
+
+{% endblock %}

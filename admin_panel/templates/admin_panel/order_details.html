@@ -1,0 +1,115 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-6 bg-white shadow-md rounded-md mt-10">
+  <h1 class="text-2xl font-semibold mb-6 text-gray-800">📦 Order Details</h1>
+
+  <!-- Order Info -->
+  <div class="mb-4">
+    <p><strong>Order ID:</strong> {{ order.order_number }}</p>
+    <form method="POST" action="{% url 'admin_panel:update_order_status' order.id %}" class="mt-2">
+      {% csrf_token %}
+      <label for="status"><strong>Status:</strong></label>
+      <select name="status" id="status" class="border px-2 py-1 rounded">
+        <option value="Pending" {% if order.status == 'Pending' %}selected{% endif %}>Pending</option>
+        <option value="Shipped" {% if order.status == 'Shipped' %}selected{% endif %}>Shipped</option>
+        <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>Delivered</option>
+        <option value="Cancelled" {% if order.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+        <option value="Return accepted" {% if order.status == 'Return accepted' %}selected{% endif %}>Return Accepted</option>
+      </select>
+      <button type="submit" class="ml-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Update</button>
+    </form>
+    <p class="mt-2"><strong>Total:</strong> ₹{{ order.total_price }}</p>
+    <p><strong>Customer:</strong> {{ order.user.first_name }} {{ order.user.last_name }}</p>
+    <p><strong>Ordered On:</strong> {{ order.created_at|date:"d M Y h:i A" }}</p>
+  </div>
+
+  <!-- ✅ Return Requests Section -->
+  {% if return_items %}
+  <div class="mb-6">
+    <h2 class="text-xl font-semibold mb-2 text-red-600">Return Requests</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border border-gray-200">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="py-2 px-4 border-b">Product</th>
+            <th class="py-2 px-4 border-b">Variant</th>
+            <th class="py-2 px-4 border-b">Qty</th>
+            <th class="py-2 px-4 border-b">Price</th>
+            <th class="py-2 px-4 border-b">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in return_items %}
+          <tr>
+            <td class="py-2 px-4 border-b">{{ item.product.name }}</td>
+            <td class="py-2 px-4 border-b">{{ item.variant_details }}</td>
+            <td class="py-2 px-4 border-b">{{ item.quantity }}</td>
+            <td class="py-2 px-4 border-b">₹{{ item.price }}</td>
+            <td class="py-2 px-4 border-b">
+              {% if order.status == 'Delivered' %}
+                <a href="{% url 'admin_panel:admin_accept_return_item' item.id %}"
+                   class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-1 rounded">
+                  Accept Return
+                </a>
+              {% else %}
+                <span class="text-gray-500 italic">Available after delivery</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- All Ordered Items -->
+  <div>
+    <h2 class="text-xl font-semibold mb-2 text-gray-700">All Ordered Items</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border border-gray-200">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="py-2 px-4 border-b">Product</th>
+            <th class="py-2 px-4 border-b">Variant</th>
+            <th class="py-2 px-4 border-b">Qty</th>
+            <th class="py-2 px-4 border-b">Price</th>
+            <th class="py-2 px-4 border-b">Subtotal</th>
+            <th class="py-2 px-4 border-b">Return Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order_items %}
+          <tr>
+            <td class="py-2 px-4 border-b">{{ item.product.name }}</td>
+            <td class="py-2 px-4 border-b">{{ item.variant_details }}</td>
+            <td class="py-2 px-4 border-b">{{ item.quantity }}</td>
+            <td class="py-2 px-4 border-b">₹{{ item.price }}</td>
+            <td class="py-2 px-4">₹{{ item.total_price }}</td>
+            <td class="py-2 px-4 border-b">
+              {% if item.is_returned %}
+                <span class="text-green-600 font-medium">✅ Returned</span>
+              {% elif item.is_return_requested %}
+                <span class="text-orange-500">Return Requested</span>
+              {% else %}
+                <span class="text-gray-500 italic">No return</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Back Button -->
+  <div class="mt-6">
+    <a href="{% url 'admin_panel:admin_orders' %}"
+       class="inline-block bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+      ← Back to Orders
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,245 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% load tz %}  {# ✅ Added for timezone filter #}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold mb-8">
+        Checkout
+    </h1>
+
+    <!-- ✅ Main Checkout Form (For Address, Payment, Place Order) -->
+    <form id="checkoutForm" method="POST">
+        {% csrf_token %}
+
+        <!-- 🏠 Address Section -->
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-2">Select Address</h3>
+            {% if addresses %}
+                <div class="space-y-3">
+                    {% for address in addresses %}
+                        <label class="block p-4 border rounded-lg cursor-pointer flex items-start justify-between {% if address == default_address %}border-blue-500{% endif %}">
+                            <div>
+                                <input type="radio" name="selected_address" value="{{ address.id }}"
+                                       {% if default_address and address.id == default_address.id %}checked{% endif %}>
+                                <span class="ml-2 font-medium">
+                                    {{ address.name }}, {{ address.phone }}<br>
+                                    {{ address.city }}, {{ address.state }} - {{ address.zipcode }}
+                                </span>
+                                {% if default_address and address.id == default_address.id %}
+                                    <span class="text-sm text-blue-600 ml-2">(Default)</span>
+                                {% endif %}
+                            </div>
+                            <a href="{% url 'user:edit_address' address.id %}" class="text-sm text-blue-600 hover:underline">
+                                ✏️ Edit
+                            </a>
+                        </label>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-red-600">No addresses found.</p>
+            {% endif %}
+            <div class="mt-4">
+                <a href="{% url 'user:add_address' %}?next={% url 'orders:checkout' %}" class="text-sm text-green-700 underline">
+                    ➕ Add New Address
+                </a>
+            </div>
+        </div>
+
+        <!-- 🛒 Order Summary -->
+        <section class="mb-10">
+            <h2 class="text-xl font-semibold mb-3">Order Summary</h2>
+            <ul class="divide-y">
+                {% for item in cart_items %}
+                    <li class="flex flex-wrap items-center gap-4 py-4">
+                        <img src="{{ item.product.primary_image }}"
+                             alt="{{ item.product.name }}"
+                             class="w-20 h-20 object-cover rounded-md border" />
+                        <div class="flex-1">
+                            <p class="font-medium">{{ item.product.name }}</p>
+                            {% if item.variant and item.variant.size %}
+                                <p class="text-sm text-gray-600">Size: {{ item.variant.size }}</p>
+                            {% endif %}
+                            <p class="text-sm text-gray-500">Qty: {{ item.quantity }}</p>
+                        </div>
+                        <div class="text-right">
+                            {% if item.price_to_show < item.product.price %}
+                                <p>
+                                    <span class="text-gray-500 line-through text-sm">₹{{ item.product.price|floatformat:2 }}</span><br>
+                                    <span class="text-green-600 font-semibold">₹{{ item.price_to_show|floatformat:2 }}</span>
+                                </p>
+                            {% else %}
+                                <p class="text-sm text-gray-500">Total: ₹{{ item.total_price|floatformat:2 }}</p>
+                                <p class="font-semibold">Total:₹{{ item.price_to_show|floatformat:2 }}</p>
+                            {% endif %}
+                            
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <!-- 💰 Price Summary -->
+        <section class="bg-gray-50 rounded-lg p-6 shadow-sm mb-10">
+            <h2 class="text-xl font-semibold mb-4">Price Summary</h2>
+            <ul class="space-y-2 text-gray-800">
+                <li class="flex justify-between">
+                    <span>Items Total</span>
+                    <span>₹ {{ final_total|add:total_discount|floatformat:2 }}</span>
+                </li>
+                <li class="flex justify-between">
+                    <span>Tax</span>
+                    <span>₹ 0.00</span>
+                </li>
+                <li class="flex justify-between">
+                    <span>Discount</span>
+                    <span>- ₹ {{ total_discount|floatformat:2 }}</span>
+                </li>
+                {% if applied_coupon %}
+                <li class="flex justify-between text-green-600">
+                    <span>Coupon ({{ applied_coupon.code }})</span>
+                    <span>- ₹ {{ discount_amount|floatformat:2 }}</span>
+                </li>
+                {% endif %}
+                <li class="flex justify-between font-bold border-t pt-3 text-pink-700">
+                    <span>Final Total</span>
+                    <span>₹ {% if applied_coupon %}{{ final_total_after_discount|floatformat:2 }}{% else %}{{ final_total|floatformat:2 }}{% endif %}</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Payment Options -->
+        <div class="mb-4">
+            <label class="block text-sm font-semibold mb-2">Select Payment Method:</label>
+            <select name="payment_method" id="payment_method" required class="w-full p-2 border rounded">
+                <option value="">Choose Payment Method</option>
+                <option value="COD">Cash on Delivery</option>
+                <option value="Razorpay">Razorpay</option>
+            </select>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex justify-end">
+            <button type="button" id="placeOrderBtn" class="bg-pink-600 text-white px-6 py-2 rounded hover:bg-pink-700">
+                Place Order
+            </button>
+        </div>
+    </form>
+    <!-- ✅ End of main checkout form -->
+
+    <!-- ✅ Coupon Section (Separate Form) -->
+    <section class="bg-white rounded-lg p-6 shadow-sm mt-8">
+        <h2 class="text-lg font-semibold mb-4">Available Coupons</h2>
+        {% if available_coupons %}
+            <ul class="space-y-2">
+                {% for coupon in available_coupons %}
+                    <li class="flex justify-between items-center border p-3 rounded">
+                        <div>
+                            <span class="font-semibold">{{ coupon.code }}</span>
+                            <span class="text-gray-500 text-sm ml-2">
+                                ({{ coupon.discount_type }} - {{ coupon.discount_value }})
+                            </span>
+                            <p class="text-xs text-gray-400">
+                                Valid till:
+                                {{ coupon.end_date|localtime|timezone:"Asia/Kolkata"|date:"d M Y, h:i A" }}<br>
+                                Usage: {{ coupon.used_count }} / {{ coupon.usage_limit }}
+                            </p>
+                        </div>
+                        <form method="POST" action="{% url 'orders:apply_coupon' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="coupon_code" value="{{ coupon.code }}">
+                            <button type="submit" class="bg-green-500 text-white px-3 py-1 rounded">Apply</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-gray-500">No coupons available at this time.</p>
+        {% endif %}
+
+        {% if applied_coupon %}
+            <p class="mt-4 text-green-600">
+                ✅ Coupon <strong>{{ applied_coupon.code }}</strong> applied!
+                <a href="{% url 'orders:remove_coupon' %}" class="text-red-500 hover:underline ml-2">Remove</a>
+            </p>
+        {% endif %}
+    </section>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+document.getElementById("placeOrderBtn").addEventListener("click", function () {
+    const paymentMethod = document.getElementById("payment_method").value;
+    const form = document.getElementById("checkoutForm");
+
+    if (!paymentMethod) {
+        alert("Please select a payment method.");
+        return;
+    }
+
+    if (paymentMethod === "COD") {
+        // ✅ Submit form for COD
+        form.submit();
+    }
+
+    if (paymentMethod === "Razorpay") {
+        // ✅ Make AJAX request for Razorpay order
+        fetch("{% url 'orders:checkout' %}", {
+            method: "POST",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: new FormData(form)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.razorpay_order_id) {
+                const options = {
+                    key: data.razorpay_key_id,
+                    amount: data.amount,
+                    currency: "INR",
+                    name: "BabyHug",
+                    description: "Order Payment",
+                    order_id: data.razorpay_order_id,
+                    handler: function (response) {
+                        // ✅ Send payment details to backend
+                        fetch("{% url 'orders:razorpay_success' %}", {
+                            method: "POST",
+                            headers: {
+                                "X-CSRFToken": "{{ csrf_token }}",
+                            },
+                            body: new URLSearchParams({
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                                order_id: data.order_id
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(result => {
+                            if (result.redirect_url) {
+                                window.location.href = result.redirect_url;
+                            } else {
+                                alert(result.error || "Payment failed");
+                            }
+                        });
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+
+                // ✅ Handle payment failure (popup closed or failed transaction)
+                rzp.on('payment.failed', function (response) {
+                    window.location.href = "/orders/failure/" + data.order_id + "/";
+                });
+
+                rzp.open();
+            } else {
+                alert("Error creating Razorpay order");
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

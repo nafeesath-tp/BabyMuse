@@ -1,0 +1,57 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Hero Banner -->
+<section class="bg-pink-50 py-12 text-center">
+    <h1 class="text-4xl font-bold text-pink-700">
+        {% if request.user.is_authenticated %}
+        Welcome back, {{ request.user.first_name|default:request.user.username }}!
+        {% endif %}
+    </h1>
+    <p class="mt-4 text-gray-600">Discover gentle care, joyful toys, and thoughtful essentials for your little one.</p>
+    <a href="{% url 'shop' %}"
+        class="mt-6 inline-block bg-pink-600 text-white px-6 py-3 rounded-full hover:bg-pink-700">Shop Now</a>
+</section>
+
+<!-- Featured Categories -->
+<section class="py-10 px-6 max-w-6xl mx-auto">
+    <h2 class="text-2xl font-semibold mb-6 text-gray-800">Featured Categories</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+            <img src="{% static 'images/skincare.png' %}" class="mx-auto h-20 mb-2" alt="">
+            <p>Skin Care</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+            <img src="{% static 'images/feeding.png' %}" class="mx-auto h-20 mb-2" alt="">
+            <p>Feeding</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+            <img src="{% static 'images/toys.png' %}" class="mx-auto h-20 mb-2" alt="">
+            <p>Toys</p>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow text-center">
+            <img src="{% static 'images/bathing.png' %}" class="mx-auto h-20 mb-2" alt="">
+            <p>Bath & Hygiene</p>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section class="py-10 px-6 max-w-6xl mx-auto">
+    <h2 class="text-2xl font-semibold mb-6 text-gray-800">Popular Picks</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% for product in products %}
+        <div class="bg-white p-4 rounded-xl shadow hover:shadow-lg transition">
+            <img src="{{ product.image1.url }}" class="w-full h-40 object-cover rounded" alt="{{ product.name }}">
+            <h3 class="mt-2 font-medium">{{ product.name }}</h3>
+            <p class="text-sm text-gray-500">{{ product.brand.name }}</p>
+            <p class="text-pink-600 font-semibold mt-1">₹{{ product.price }}</p>
+            <a href="{% url 'shop:product_detail' product.id %}" class="text-pink-600 text-sm hover:underline">View</a>
+        </div>
+        {% empty %}
+        <p>No products found.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

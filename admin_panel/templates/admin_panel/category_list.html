@@ -1,0 +1,67 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+
+<div class="p-6">
+  <h2 class="text-2xl font-bold mb-4">Category List</h2>
+
+  <a href="{% url 'admin_panel:admin_add_category' %}"
+    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-4 inline-block">
+    + Add Category
+  </a>
+
+  <table class="w-full table-auto border border-gray-300">
+    <thead>
+      <tr class="bg-gray-100 text-left">
+        <th class="p-2 border">#</th>
+        <th class="p-2 border">Category</th>
+        <th class="p-2 border">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for category in page_obj %}
+      <tr class="text-sm">
+        <td class="p-2 border">{{ forloop.counter }}</td>
+        <td class="p-2 border">
+          <strong>{{ category.name }}</strong>
+        </td>
+        <td class="p-2 border">
+          <a href="{% url 'admin_panel:admin_edit_category' category.id %}"
+            class="text-blue-600 hover:underline">Edit</a> |
+          <form method="POST" action="{% url 'admin_panel:toggle_category_status' category.id %}"
+            style="display:inline;">
+            {% csrf_token %}
+            <button type="submit"
+              onclick="return confirm('Are you sure you want to {% if category.is_listed %}unlist{% else %}list{% endif %} this category?');"
+              class="{% if category.is_listed %}text-red-600{% else %}text-green-600{% endif %}">
+              {% if category.is_listed %}Unlist{% else %}List{% endif %}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="3" class="p-4 text-center text-gray-500">No categories found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Pagination -->
+  <div class="mt-4">
+    <nav class="flex justify-center">
+      <ul class="flex space-x-2">
+        {% if page_obj.has_previous %}
+        <li><a href="?page={{ page_obj.previous_page_number }}"
+            class="px-3 py-1 border rounded hover:bg-gray-200">Previous</a></li>
+        {% endif %}
+        <li><span class="px-3 py-1 border rounded bg-gray-300">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+        <li><a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 border rounded hover:bg-gray-200">Next</a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+</div>
+
+{% endblock %}

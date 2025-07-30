@@ -1,0 +1,24 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="text-center py-16">
+    <!-- ✅ Illustration -->
+    <img src="https://cdn-icons-png.flaticon.com/512/845/845646.png" alt="Success" class="w-32 mx-auto mb-6">
+
+    <h2 class="text-3xl font-bold text-green-600">🎉 Order Placed Successfully!</h2>
+    <p class="mt-4 text-gray-700">
+        Thank you for your order!<br>
+        Your order #<strong>{{ order.id }}</strong> has been placed on 
+        <strong>{{ order.created_at|date:"F j, Y" }}</strong>.
+    </p>
+
+    <div class="mt-6">
+        <a href="{% url 'orders:my_orders' %}" class="bg-blue-600 text-white px-4 py-2 rounded">
+            View My Orders
+        </a>
+        <a href="{% url 'home' %}" class="ml-3 bg-gray-600 text-white px-4 py-2 rounded">
+            Continue Shopping
+        </a>
+    </div>
+</div>
+{% endblock %}

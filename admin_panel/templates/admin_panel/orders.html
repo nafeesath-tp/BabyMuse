@@ -1,0 +1,71 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto mt-10">
+  <h2 class="text-2xl font-bold mb-6 text-center">All Orders</h2>
+  <form method="get" class="mb-8 flex flex-col md:flex-row items-center gap-12">
+    <input type="text" name="q" placeholder="Search by Order ID or User"
+    value="{{ query }}" class="border px-4 py-2 rounded w-full md:w-64" />
+
+    <select name="status" class="border px-4 py-2 rounded">
+        <option value="">All Status</option>
+        <option value="Pending" {% if status_filter == "Pending" %}selected{% endif %}>Pending</option>
+        <option value="Shipped" {% if status_filter == "Shipped" %}selected{% endif %}>Shipped</option>
+        <option value="Delivered" {% if status_filter == "Delivered" %}selected{% endif %}>Delivered</option>
+        <option value="Cancelled" {% if status_filter == "Cancelled" %}selected{% endif %}>Cancelled</option>
+    </select>
+    <button type="submit" class="bg-pink-600 text-white px-4 py-2 rounded hover:bg-pink-700">Apply</button>
+   
+    </form>
+
+
+  <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+    <table class="min-w-full table-auto">
+      <thead class="bg-gray-200 text-gray-700">
+        <tr>
+          <th class="px-4 py-2">Order ID</th>
+          <th class="px-4 py-2">User</th>
+          <th class="px-4 py-2">Total</th>
+          <th class="px-4 py-2">Payment</th>
+          <th class="px-4 py-2">Status</th>
+          <th class="px-4 py-2">Date</th>
+          <th class="px-4 py-2">Actions</th>
+        </tr>
+      </thead>
+<tbody class="text-gray-800">
+  {% for order in page_obj %}
+  <tr class="border-t">
+    <td class="px-4 py-2">{{ order.order_id }}</td>
+    <td class="px-4 py-2">{{ order.user.username }}</td>
+    <td class="px-4 py-2">₹{{ order.total_price }}</td>
+    <td class="px-4 py-2">{{ order.payment_method }}</td>
+    <td class="px-4 py-2">{{ order.status }}</td>
+    <td class="px-4 py-2">{{ order.created_at|date:"M d, Y" }}</td>
+    <td class="px-4 py-2">
+      <a href="{% url 'admin_panel:admin_order_detail' order.id %}" class="text-blue-600 hover:underline">View</a>
+    </td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="7" class="text-center py-4 text-gray-500">No orders found.</td>
+  </tr>
+  {% endfor %}
+</tbody>
+    </table>
+    
+  </div>
+  <div class="mt-6 flex justify-center items-center space-x-2 text-sm">
+  {% if page_obj.has_previous %}
+    <a href="?page=1" class="px-3 py-1 border rounded hover:bg-gray-100">First</a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-1 border rounded hover:bg-gray-100">Previous</a>
+  {% endif %}
+
+  <span class="px-3 py-1 border rounded bg-gray-200">{{ page_obj.number }}</span>
+
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-1 border rounded hover:bg-gray-100">Next</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-1 border rounded hover:bg-gray-100">Last</a>
+  {% endif %}
+</div>
+
+</div>
+{% endblock %}

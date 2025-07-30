@@ -1,0 +1,161 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load cart_extras %}
+
+{% block content %}
+<div class="bg-gray-50 min-h-screen py-8">
+  <div class="container mx-auto px-4">
+    <h1 class="text-3xl font-bold mb-6 text-center text-pink-600">Shop BabyMuse Products</h1>
+
+    <!-- 🔍 Search & Filters -->
+    <form method="get" class="mb-6 grid md:grid-cols-4 gap-4">
+      <input type="text" name="search" placeholder="Search products..." value="{{ search_query }}"
+        class="p-2 border border-gray-300 rounded-md col-span-1" />
+
+      <select name="category" class="p-2 border border-gray-300 rounded-md col-span-1">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+        <option value="{{ cat.id }}" {% if cat.id|stringformat:"s" == selected_category %} selected{% endif %}>{{ cat.name }}</option>
+        {% endfor %}
+      </select>
+
+      <div class="flex space-x-2 col-span-1">
+        <input type="number" name="price_min" placeholder="Min" value="{{ price_min }}"
+          class="w-1/2 p-2 border border-gray-300 rounded-md" />
+        <input type="number" name="price_max" placeholder="Max" value="{{ price_max }}"
+          class="w-1/2 p-2 border border-gray-300 rounded-md" />
+      </div>
+
+      <select name="sort" class="...">
+        <option value="">Sort By</option>
+        <option value="price_low" {% if sort_by|equals:"price_low" %}selected{% endif %}>Price: Low to High</option>
+        <option value="price_high" {% if sort_by|equals:"price_high" %}selected{% endif %}>Price: High to Low</option>
+        <option value="name_asc" {% if sort_by|equals:"name_asc" %}selected{% endif %}>A – Z</option>
+        <option value="name_desc" {% if sort_by|equals:"name_desc" %}selected{% endif %}>Z – A</option>
+      </select>
+
+      <div class="col-span-4 flex justify-end space-x-2">
+        <button type="submit"
+          class="px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 transition">Apply</button>
+        <a href="{% url 'shop:shop' %}"
+          class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition">Clear</a>
+      </div>
+    </form>
+
+    <!-- 🛍️ Products Grid -->
+    {% if page_obj %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      {% for product in page_obj %}
+      <div class="relative bg-white shadow rounded-lg overflow-hidden">
+        <a href="{% url 'shop:product_detail' product.id %}">
+          <img src="{{ product.primary_image }}" alt="{{ product.name }}"
+            class="w-full h-60 object-cover object-center rounded-md transition-transform duration-300 hover:scale-105">
+
+          {% if not product.has_stock %}
+          <span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">Out of Stock</span>
+          {% endif %}
+        </a>
+
+        <div class="p-4">
+          <h2 class="text-lg font-semibold text-gray-800">{{ product.name }}</h2>
+          {% if product.get_discounted_price < product.price %}
+            <p class="line-through text-gray-400 text-sm">₹{{ product.price }}</p>
+            <p class="text-red-600 font-bold mt-1">₹{{ product.get_discounted_price }}</p>
+          {% else %}
+            <p class="text-pink-600 font-bold mt-2">₹{{ product.price }}</p>
+          {% endif %}
+
+          <p class="text-gray-500 text-sm mt-1 truncate">{{ product.description }}</p>
+          <div class="flex gap-2 mt-2">
+            <button class="wishlist-btn bg-pink-100 text-pink-600 px-3 py-1 rounded hover:bg-pink-200"
+              data-product-id="{{ product.id }}">
+              ❤️ Wishlist
+            </button>
+            {% if product.has_stock %}
+            <button class="add-to-cart-btn bg-green-600 text-white px-3 py-1 rounded"
+              data-product-id="{{ product.id }}">
+              🛒 Add to Cart
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center text-gray-600 mt-10">No products found matching your criteria.</div>
+    {% endif %}
+
+    <!-- 📄 Pagination -->
+    <div class="mt-10 flex justify-center space-x-2">
+      {% if page_obj.has_previous %}
+      <a href="?{% if request.GET %}{{ request.GET.urlencode|cut:'page=' }}&{% endif %}page={{ page_obj.previous_page_number }}"
+        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">&laquo; Prev</a>
+      {% endif %}
+
+      <span class="px-4 py-2 bg-pink-600 text-white rounded">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+
+      {% if page_obj.has_next %}
+      <a href="?{% if request.GET %}{{ request.GET.urlencode|cut:'page=' }}&{% endif %}page={{ page_obj.next_page_number }}"
+        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Next &raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- ✅ AJAX Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const csrfToken = "{{ csrf_token }}";
+
+  document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const productId = this.dataset.productId;
+
+      fetch("{% url 'shop:ajax_add_to_cart' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `product_id=${productId}`
+      })
+      .then(res => {
+        if (res.status === 401) {
+          // Not logged in → Redirect
+          return res.json().then(data => {
+            if (data.redirect_url) {
+              window.location.href = data.redirect_url;  // ✅ Redirect here
+            }
+          });
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return; // ✅ No further execution after redirect
+        if (data.status === 'success') {
+          document.getElementById("cart-count").innerText = data.cart_count;
+          showToast("✅ Item added to cart!");
+        } else {
+          showToast(data.message || "Failed to add.");
+        }
+      })
+      .catch(err => {
+        console.error("Add to cart error:", err);
+      });
+    });
+  });
+
+  function showToast(message) {
+    const toast = document.createElement("div");
+    toast.innerText = message;
+    toast.className = "fixed top-5 right-5 bg-green-600 text-white px-4 py-2 rounded shadow z-50";
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = "0";
+      setTimeout(() => toast.remove(), 500);
+    }, 3000);
+  }
+});
+</script>
+{% endblock %}

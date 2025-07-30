@@ -1,0 +1,22 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}Admin Dashboard – BabyMuse{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6 text-blue-600">Welcome to BabyMuse Admin Dashboard</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <div class="bg-white p-6 rounded-xl shadow">
+    <p class="text-gray-600 font-medium">Total Users</p>
+    <h2 class="text-3xl font-bold text-blue-700">{{ total_users }}</h2>
+  </div>
+  <div class="bg-white p-6 rounded-xl shadow">
+    <p class="text-gray-600 font-medium">Total Orders</p>
+    <h2 class="text-3xl font-bold text-blue-700">{{ total_orders }}</h2>
+  </div>
+  <div class="bg-white p-6 rounded-xl shadow">
+    <p class="text-gray-600 font-medium">Total Products</p>
+    <h2 class="text-3xl font-bold text-blue-700">{{ total_products }}</h2>
+  </div>
+</div>
+{% endblock %}
+

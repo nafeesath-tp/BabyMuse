@@ -1,0 +1,414 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-6 py-8 grid md:grid-cols-2 gap-8">
+
+  <!-- Product Images -->
+  <div>
+    <!-- Breadcrumb -->
+    <nav class="mb-4 text-sm text-gray-500">
+      <a href="{% url 'home' %}" class="hover:text-pink-600">Home</a> /
+      <a href="{% url 'shop:shop' %}" class="hover:text-pink-600">Shop</a> /
+      <span class="text-pink-600 font-medium">{{ product.name }}</span>
+    </nav>
+
+    <!-- Zoomable Main Image -->
+    <div class="border rounded-lg overflow-hidden mb-4 relative">
+      <img id="main-image" src="{{ images.0.image.url }}" alt="{{ product.name }}"
+        class="w-full h-[400px] object-contain transition-transform duration-300 ease-in-out"
+        onmousemove="zoomImage(event)" onmouseleave="resetZoom()" />
+    </div>
+
+    <!-- Thumbnails -->
+    <div class="flex gap-4">
+      {% for image in images %}
+      <img src="{{ image.image.url }}" alt="Thumb {{ forloop.counter }}"
+        class="w-24 h-24 object-cover cursor-pointer border rounded-lg hover:ring-2 hover:ring-pink-500"
+        onclick="changeMainImage('{{ image.image.url }}')" />
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Product Info -->
+  <div>
+    <h1>{{ product.name }}</h1>
+
+{% if product.price %}
+  {% if final_discount|default:0 > 0 %}
+    <p class="line-through text-gray-500">₹{{ product.price }}</p>
+    <p class="text-green-600 font-bold">₹{{ discounted_price }} ({{ final_discount }}% OFF)</p>
+  {% else %}
+    <p class="font-bold text-pink-600">₹{{ product.price }}</p>
+  {% endif %}
+{% else %}
+  <p class="text-red-500 text-sm mt-2">Price not available</p>
+{% endif %}
+
+    <!-- Rating -->
+    <div class="flex items-center gap-2 mb-2">
+      <div>
+        {% for i in "12345" %}
+        {% if avg_rating >= forloop.counter %}
+        ⭐
+        {% elif avg_rating >= forloop.counter0|add:"0.5" %}
+        ⭐
+        {% else %}
+        ☆
+        {% endif %}
+        {% endfor %}
+      </div>
+      <span class="text-gray-600 text-sm">({{ total_reviews }} reviews)</span>
+    </div>
+
+    <!-- Price + Discount -->
+    <div id="price-section">
+ {% with first_variant=variants.0 %}
+  {% if first_variant %}
+    <div class="text-2xl text-pink-600 font-semibold">
+      
+      <span id="display-price">
+        ₹{{ discounted_price }}
+      </span>
+    </div>
+  {% else %}
+    <p class="text-red-500 text-sm mt-2">Price not available</p>
+  {% endif %}
+{% endwith %}
+
+
+    </div>
+
+    <!-- Size Variants -->
+{% if variants %}
+<div class="mt-4 mb-4">
+  <h3 class="text-lg font-medium mb-3 text-gray-800">Available Sizes:</h3>
+  <div class="flex flex-wrap gap-2">
+    {% for variant in variants %}
+    <label class="cursor-pointer">
+      <input 
+        type="radio" 
+        name="size_variant" 
+        value="{{ variant.id }}" 
+        class="hidden size-variant-radio" 
+        data-price="{{ variant.price }}"
+        data-stock="{{ variant.stock }}"
+        data-size="{{ variant.size }}"
+        {% if forloop.first %}checked{% endif %}
+        {% if variant.stock <= 0 %}disabled{% endif %}
+      >
+      <span class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium
+                    hover:border-pink-500 hover:bg-pink-50 transition-colors
+                    variant-option {% if variant.stock <= 0 %}opacity-50 cursor-not-allowed{% endif %}"
+            data-variant-id="{{ variant.id }}" 
+            data-stock="{{ variant.stock }}">
+        {{ variant.size }}
+        {% if variant.stock <= 0 %}
+          <span class="text-xs text-red-500 block">Out of Stock</span>
+        {% elif variant.stock <= 10 %}
+          <span class="text-xs text-orange-500 block">Only {{ variant.stock }} left</span>
+        {% endif %}
+      </span>
+    </label>
+    {% endfor %}
+  </div>
+
+  <!-- Selected variant info -->
+  <div id="selected-variant-info" class="mt-2 text-sm text-gray-600">
+    Selected: <span id="selected-variant-name">{{ variants.0.size }}</span>
+    <span id="selected-variant-stock" class="ml-2">
+      {% if variants.0.stock <= 0 %}
+        (<span class="text-red-500">Out of Stock</span>)
+      {% elif variants.0.stock <= 10 %}
+        (<span class="text-orange-500">Only {{ variants.0.stock }} left</span>)
+      {% else %}
+        (In Stock)
+      {% endif %}
+    </span>
+  </div>
+</div>
+{% endif %}
+
+    <!-- Stock Status Alert -->
+    <div id="stock-alert" class="mt-4 mb-4 hidden">
+      <div class="p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
+        ⚠️ <span id="stock-message">This size is currently out of stock.</span>
+      </div>
+    </div>
+
+    <!-- Low Stock Alert -->
+    <div id="low-stock-alert" class="mt-4 mb-4 hidden">
+      <div class="p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
+        ⚠️ <span id="low-stock-message">Only few items left in stock!</span>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <p class="mt-4 text-gray-700 leading-relaxed">{{ product.description }}</p>
+
+    <!-- Action Buttons -->
+    <div class="flex gap-4 mt-6">
+      <button id="add-to-cart-btn" class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+        data-product-id="{{ product.id }}">🛒 Add to Cart</button>
+
+      <button id="add-to-wishlist-btn" class="bg-pink-500 text-white px-5 py-2 rounded hover:bg-pink-600 transition"
+        data-product-id="{{ product.id }}">❤️ Add to Wishlist</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"
+  class="fixed top-5 right-5 px-4 py-2 rounded shadow hidden z-50 bg-green-100 text-green-800 border border-green-400">
+</div>
+
+<!-- Zoom + AJAX Logic -->
+<script>
+  function changeMainImage(url) {
+    const img = document.getElementById("main-image");
+    img.src = url;
+    img.style.transform = "scale(1)";
+  }
+
+  function zoomImage(e) {
+    const img = e.target;
+    const rect = img.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const xPercent = x / rect.width * 100;
+    const yPercent = y / rect.height * 100;
+    img.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+    img.style.transform = "scale(2)";
+  }
+
+  function resetZoom() {
+    const img = document.getElementById("main-image");
+    img.style.transform = "scale(1)";
+  }
+
+  function showToast(message, success = true) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.className = `fixed top-5 right-5 px-4 py-2 rounded shadow z-50 ${success ? 'bg-green-100 text-green-800 border-green-400' : 'bg-red-100 text-red-800 border-red-400'}`;
+    toast.classList.remove("hidden");
+    setTimeout(() => toast.classList.add("hidden"), 3000);
+  }
+
+  function updateStockStatus(stock, variantName) {
+    const stockAlert = document.getElementById("stock-alert");
+    const lowStockAlert = document.getElementById("low-stock-alert");
+    const cartBtn = document.getElementById("add-to-cart-btn");
+    const stockMessage = document.getElementById("stock-message");
+    const lowStockMessage = document.getElementById("low-stock-message");
+
+    // Hide all alerts first
+    stockAlert.classList.add("hidden");
+    lowStockAlert.classList.add("hidden");
+
+    if (stock <= 0) {
+      // Out of stock
+      stockAlert.classList.remove("hidden");
+      stockMessage.textContent = `${variantName} is currently out of stock.`;
+      cartBtn.disabled = true;
+      cartBtn.classList.add("disabled:bg-gray-400", "disabled:cursor-not-allowed");
+    } else if (stock <= 5) {
+      // Low stock
+      lowStockAlert.classList.remove("hidden");
+      lowStockMessage.textContent = `Only ${stock} items left for ${variantName}!`;
+      cartBtn.disabled = false;
+      cartBtn.classList.remove("disabled:bg-gray-400", "disabled:cursor-not-allowed");
+    } else {
+      // Normal stock
+      cartBtn.disabled = false;
+      cartBtn.classList.remove("disabled:bg-gray-400", "disabled:cursor-not-allowed");
+    }
+  }
+
+  function updatePrice(variant) {
+    const displayPrice = document.getElementById("display-price");
+    const displayDiscountPrice = document.getElementById("display-discount-price");
+    const displayOriginalPrice = document.getElementById("display-original-price");
+
+    if (variant.dataset.discountPrice && variant.dataset.discountPrice !== 'None' && variant.dataset.discountPrice !== '') {
+      if (displayDiscountPrice) {
+        displayDiscountPrice.textContent = variant.dataset.discountPrice;
+      }
+      if (displayOriginalPrice) {
+        displayOriginalPrice.textContent = variant.dataset.price;
+      }
+    } else {
+      if (displayPrice) {
+        displayPrice.textContent = variant.dataset.price;
+      }
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    const variantRadios = document.querySelectorAll('.size-variant-radio');
+    const variantOptions = document.querySelectorAll('.variant-option');
+    const selectedVariantName = document.getElementById('selected-variant-name');
+    const selectedVariantStock = document.getElementById('selected-variant-stock');
+    const cartBtn = document.getElementById("add-to-cart-btn");
+    const wishlistBtn = document.getElementById("add-to-wishlist-btn");
+
+    // Initialize first variant if exists
+    if (variantRadios.length > 0) {
+      const firstVariant = variantRadios[0];
+      const firstOption = variantOptions[0];
+      
+      // Set initial active state
+      firstOption.classList.remove('border-gray-300');
+      firstOption.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
+      
+      // Update initial stock status
+      updateStockStatus(parseInt(firstVariant.dataset.stock), firstVariant.dataset.variantName);
+      updatePrice(firstVariant);
+      
+      if (selectedVariantStock) {
+        const stock = parseInt(firstVariant.dataset.stock);
+        if (stock <= 0) {
+          selectedVariantStock.innerHTML = '<span class="text-red-500">(Out of Stock)</span>';
+        } else if (stock <= 5) {
+          selectedVariantStock.innerHTML = `<span class="text-orange-500">(${stock} left)</span>`;
+        } else {
+          selectedVariantStock.innerHTML = `<span class="text-green-500">(In Stock)</span>`;
+        }
+      }
+    }
+
+    // Handle variant option clicks
+    variantOptions.forEach((option, index) => {
+      option.addEventListener('click', function() {
+        const stock = parseInt(this.dataset.stock);
+        
+        // Don't allow selection of out of stock items
+        if (stock <= 0) {
+          showToast("This size is out of stock!", false);
+          return;
+        }
+
+        // Remove active state from all options
+        variantOptions.forEach(opt => {
+          opt.classList.remove('border-pink-500', 'bg-pink-50', 'text-pink-700');
+          opt.classList.add('border-gray-300');
+        });
+        
+        // Add active state to clicked option
+        this.classList.remove('border-gray-300');
+        this.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
+        
+        // Select the radio button
+        const radio = variantRadios[index];
+        radio.checked = true;
+        
+        // Update selected variant name
+        if (selectedVariantName) {
+          selectedVariantName.textContent = radio.dataset.variantName;
+        }
+        
+        // Update stock status display
+        if (selectedVariantStock) {
+          if (stock <= 0) {
+            selectedVariantStock.innerHTML = '<span class="text-red-500">(Out of Stock)</span>';
+          } else if (stock <= 5) {
+            selectedVariantStock.innerHTML = `<span class="text-orange-500">(${stock} left)</span>`;
+          } else {
+            selectedVariantStock.innerHTML = '<span class="text-green-500">(In Stock)</span>';
+          }
+        }
+        
+        // Update stock alerts and button state
+        updateStockStatus(stock, radio.dataset.variantName);
+        
+        // Update price
+        updatePrice(radio);
+      });
+    });
+
+    // Cart button functionality
+    if (cartBtn) {
+      cartBtn.addEventListener("click", function () {
+        if (this.disabled) {
+          showToast("Please select an available size!", false);
+          return;
+        }
+
+        const productId = this.dataset.productId;
+        const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
+        
+        // Check if variant is selected and in stock
+        if (selectedVariant) {
+          const stock = parseInt(selectedVariant.dataset.stock);
+          if (stock <= 0) {
+            showToast("Selected size is out of stock!", false);
+            return;
+          }
+        }
+        
+        let body = `product_id=${productId}`;
+        if (selectedVariant) {
+          body += `&variant_id=${selectedVariant.value}`;
+        }
+        
+        fetch("{% url 'shop:ajax_add_to_cart' %}", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: body
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'success') {
+              showToast("Added to cart!");
+              if (document.getElementById("cart-count")) {
+                document.getElementById("cart-count").innerText = data.cart_count;
+              }
+            } else {
+              showToast(data.message || "Add to cart failed", false);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast("An error occurred. Please try again.", false);
+          });
+      });
+    }
+
+    // Wishlist button functionality
+    if (wishlistBtn) {
+      wishlistBtn.addEventListener("click", function () {
+        const productId = this.dataset.productId;
+        const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
+        
+        let body = `product_id=${productId}`;
+        if (selectedVariant) {
+          body += `&variant_id=${selectedVariant.value}`;
+        }
+        
+        fetch("{% url 'shop:ajax_add_to_wishlist' %}", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: body
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'added') {
+              showToast("Added to wishlist!");
+            } else {
+              showToast("Already in wishlist", false);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showToast("An error occurred. Please try again.", false);
+          });
+      });
+    }
+  });
+</script>
+{% endblock %}

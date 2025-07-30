@@ -1,0 +1,59 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gray-100">
+  <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
+    <h2 class="text-2xl font-bold text-center mb-6">Step 2 – Verify OTP</h2>
+
+    {% if messages %}
+      <ul class="mb-4 text-center text-sm text-red-600">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <form method="POST" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block mb-1 text-gray-700">Enter OTP</label>
+        <input type="text" name="otp" maxlength="6" required
+               class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring focus:border-blue-300">
+      </div>
+
+      <button type="submit"
+              class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">
+        Verify OTP
+      </button>
+    </form>
+
+    <!-- Timer + Resend -->
+    <div class="text-sm text-center mt-4 text-gray-500">
+      <span id="timer">Resend OTP in 30s</span>
+
+      <form method="POST" action="{% url 'user:resend_otp' %}"
+            id="resend-form" style="display:none;" class="mt-2">
+        {% csrf_token %}
+        <button type="submit" class="text-blue-600 hover:underline">Resend OTP</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JS for countdown and showing Resend OTP -->
+<script>
+  let countdown = 30;
+  let timerEl = document.getElementById('timer');
+  let resendForm = document.getElementById('resend-form');
+
+  let interval = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      clearInterval(interval);
+      timerEl.style.display = 'none';
+      resendForm.style.display = 'block';
+    } else {
+      timerEl.textContent = `Resend OTP in ${countdown}s`;
+    }
+  }, 1000);
+</script>
+{% endblock %}

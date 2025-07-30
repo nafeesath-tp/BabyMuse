@@ -1,0 +1,21 @@
+{% extends 'admin_panel/base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-10 bg-white p-6 shadow rounded-md">
+  <h2 class="text-xl font-bold mb-4 text-center">Edit Variant</h2>
+  <form method="POST">
+    {% csrf_token %}
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700">Size</label>
+      <input type="text" name="size" value="{{ variant.size }}" required class="w-full mt-1 p-2 border rounded">
+    </div>
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700">Stock</label>
+      <input type="number" name="stock" value="{{ variant.stock }}" required class="w-full mt-1 p-2 border rounded">
+    </div>
+    <div class="text-right">
+      <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update Variant</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

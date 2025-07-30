@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block content %}
+<div class="max-w-lg mx-auto text-center py-10">
+    <img src="{% static 'images/payment_failed.png' %}" alt="Payment Failed" class="mx-auto w-40 mb-6">
+    <h1 class="text-3xl font-bold text-red-600">Payment Failed</h1>
+    <p class="text-gray-600 mt-2">Your payment was not completed. Please try again or use another method.</p>
+
+    <div class="mt-6 flex justify-center gap-4">
+        <a href="{% url 'orders:checkout' %}" class="bg-blue-600 text-white px-6 py-2 rounded-lg">Retry Payment</a>
+        <a href="{% url 'orders:order_detail' order.id %}" class="bg-gray-500 text-white px-6 py-2 rounded-lg">View Order</a>
+    </div>
+</div>
+{% endblock %}

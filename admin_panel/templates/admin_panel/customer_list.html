@@ -1,0 +1,70 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+{{Customers}}
+<div class="p-6">
+  <h2 class="text-2xl font-bold mb-4">Customers</h2>
+
+  <form method="get" class="mb-4 flex items-center">
+    <input type="text" name="q" placeholder="Search by name, email or phone" value="{{ query }}"
+      class="border px-3 py-1 rounded w-1/2 mr-2" />
+    <button type="submit" class="bg-blue-600 text-white px-4 py-1 rounded">Search</button>
+  </form>
+
+  <table class="min-w-full bg-white border">
+    <thead>
+      <tr>
+        <th class="px-4 py-2 border">Username</th>
+        <th class="px-4 py-2 border">Email</th>
+        <th class="px-4 py-2 border">Status</th>
+        <th class="px-4 py-2 border">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in page_obj %}
+      <tr>
+        <td class="border px-4 py-2">{{ user.username }}</td>
+        <td class="border px-4 py-2">{{ user.email }}</td>
+        <td class="border px-4 py-2">
+          {% if user.is_active %}
+          <span class="text-green-600 font-semibold">Active</span>
+          {% else %}
+          <span class="text-red-600 font-semibold">Blocked</span>
+          {% endif %}
+        </td>
+        <td class="border px-4 py-2">
+          <form action="{% url 'admin_panel:toggle_user_status' user.id %}" method="post"
+            onsubmit="return confirm('Are you sure you want to {% if user.is_active %}block{% else %}unblock{% endif %} this user?');">
+            {% csrf_token %}
+            {% if user.is_active %}
+            <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">
+              Block
+            </button>
+            {% else %}
+            <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+              Unblock
+            </button>
+            {% endif %}
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="mt-4">
+    <nav class="flex justify-center">
+      <ul class="flex space-x-2">
+        {% if page_obj.has_previous %}
+        <li><a href="?page={{ page_obj.previous_page_number }}&q={{ query }}"
+            class="px-3 py-1 border rounded">Previous</a></li>
+        {% endif %}
+        <li><span class="px-3 py-1 border rounded bg-gray-300">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+        <li><a href="?page={{ page_obj.next_page_number }}&q={{ query }}" class="px-3 py-1 border rounded">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+</div>
+
+{% endblock %}

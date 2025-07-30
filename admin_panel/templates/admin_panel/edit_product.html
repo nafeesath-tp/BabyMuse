@@ -1,0 +1,211 @@
+{% extends 'admin_panel/base.html' %}
+{% load custom_filters %}
+
+{% block content %}
+<div class="max-w-xl mx-auto p-6 bg-white shadow-md rounded-md mt-10">
+  <h2 class="text-2xl font-semibold mb-4 text-center">Edit Product</h2>
+
+  <!-- ✅ Show Django messages -->
+  {% if messages %}
+  <div class="mb-4">
+    {% for message in messages %}
+      <p class="text-sm text-{{ message.tags }}-600">{{ message }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-4">
+    {% csrf_token %}
+
+    <!-- Name -->
+    <label for="name" class="block font-semibold">Product Name</label>
+    <input type="text" id="name" name="name" value="{{ product.name }}" placeholder="Product Name"
+      class="w-full px-4 py-2 border rounded {% if form.name.errors %}border-red-500{% endif %}" required />
+    {% if form.name.errors %}
+    <p class="text-red-500 text-sm">{{ form.name.errors }}</p>
+    {% endif %}
+
+    <!-- Category -->
+    <label for="category" class="block font-semibold">Category</label>
+    <select name="category" id="category" class="w-full px-4 py-2 border rounded {% if form.category.errors %}border-red-500{% endif %}" required>
+      {% for cat in categories %}
+      <option value="{{ cat.id }}" {% if cat.id|equals_id:product.category.id %}selected{% endif %}>
+        {{ cat.name }}
+      </option>
+      {% endfor %}
+    </select>
+    {% if form.category.errors %}
+    <p class="text-red-500 text-sm">{{ form.category.errors }}</p>
+    {% endif %}
+
+    <!-- Description -->
+    <label for="description" class="block font-semibold">Description</label>
+    <textarea name="description" id="description" placeholder="Product Description"
+      class="w-full px-4 py-2 border rounded {% if form.description.errors %}border-red-500{% endif %}" rows="4" required>{{ product.description }}</textarea>
+    {% if form.description.errors %}
+    <p class="text-red-500 text-sm">{{ form.description.errors }}</p>
+    {% endif %}
+
+    <!-- Price -->
+    <label for="price" class="block font-semibold">Price (₹)</label>
+    <input type="number" id="price" name="price" step="0.01" value="{{ product.price }}" placeholder="Price"
+      class="w-full px-4 py-2 border rounded {% if form.price.errors %}border-red-500{% endif %}" required />
+    {% if form.price.errors %}
+    <p class="text-red-500 text-sm">{{ form.price.errors }}</p>
+    {% endif %}
+
+    <!-- Product Offer Discount -->
+    <label class="block text-gray-700 font-medium mb-1">Product Offer (%)</label>
+    <input type="number" name="discount_percent" value="{{ product_discount }}" min="0" max="100"
+          class="form-input w-full" id="discount_percent">
+
+    <!-- Category Offer Info -->
+    <p class="mt-2 text-gray-600 text-sm">
+        📂 Category Offer: <strong>{{ category_discount }}%</strong>
+    </p>
+
+    <!-- Discounted Price Preview -->
+    <p class="mt-2 text-gray-600 text-sm">
+        💸 Final Price: ₹<span id="discounted_preview">{{ discounted_price }}</span>
+    </p>
+
+    <!-- Current Images -->
+    <h4 class="font-semibold mt-4">Current Images:</h4>
+    <div class="flex gap-4 my-2 flex-wrap">
+      {% for img in image_slots %}
+      <div class="flex flex-col items-center">
+        {% if img %}
+          <img src="{{ img.image.url }}" class="w-24 h-24 object-cover rounded shadow preview-img" />
+          <input type="hidden" name="image_id_{{ forloop.counter }}" value="{{ img.id }}">
+        {% else %}
+          <img src="/static/images/default-img.jpg" class="w-24 h-24 object-cover rounded shadow preview-img" />
+        {% endif %}
+
+        <label for="image_input_{{ forloop.counter }}" class="text-sm mt-2 text-blue-500 hover:underline cursor-pointer">
+          ✏️ Change
+        </label>
+        <input type="file" id="image_input_{{ forloop.counter }}" name="image_input_{{ forloop.counter }}" accept="image/*" class="hidden" />
+
+        <input type="hidden" id="remove_image_{{ forloop.counter }}" name="remove_image_{{ forloop.counter }}" value="false">
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Submit -->
+    <div class="flex justify-end">
+      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+        Save Changes
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- ✅ Cropper Modal -->
+<div id="cropperModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="bg-white p-4 rounded shadow-md w-96">
+    <h3 class="text-lg font-bold mb-2">Crop Image</h3>
+    <div class="w-full h-64">
+      <img id="cropperImage" class="max-w-full" />
+    </div>
+    <div class="mt-4 flex justify-end gap-2">
+      <button id="cropCancel" class="bg-gray-400 text-white px-4 py-2 rounded">Cancel</button>
+      <button id="cropSave" class="bg-blue-600 text-white px-4 py-2 rounded">Crop & Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JS Includes -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // ✅ Cropper.js Logic
+    let cropper;
+    let currentInput;
+    const modal = document.getElementById("cropperModal");
+    const cropperImage = document.getElementById("cropperImage");
+    const cropSaveBtn = document.getElementById("cropSave");
+    const cropCancelBtn = document.getElementById("cropCancel");
+
+    // Trigger modal on file select
+    document.querySelectorAll("input[type='file']").forEach(input => {
+        input.addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentInput = input;
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    cropperImage.src = event.target.result;
+                    modal.classList.remove("hidden");
+                    cropperImage.onload = function () {
+                        if (cropper) cropper.destroy();
+                        cropper = new Cropper(cropperImage, {
+                            aspectRatio: 1, // ✅ Square crop
+                            viewMode: 1
+                        });
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+
+    // Cancel
+    cropCancelBtn.addEventListener("click", function () {
+        modal.classList.add("hidden");
+        if (cropper) cropper.destroy();
+        currentInput.value = "";
+    });
+
+    // Save cropped image
+    cropSaveBtn.addEventListener("click", function () {
+    const canvas = cropper.getCroppedCanvas({ width: 600, height: 600 });
+
+    canvas.toBlob(blob => {
+        if (!blob) {
+            alert("Image crop failed. Please try again.");
+            return;
+        }
+
+        // ✅ Preview update
+        const url = URL.createObjectURL(blob);
+        const preview = currentInput.closest("div").querySelector("img.preview-img");
+        if (preview) preview.src = url;
+
+        // ✅ Convert Blob to File
+        const file = new File([blob], "cropped_image.jpg", { type: "image/jpeg" });
+
+        // ✅ Replace original input file with cropped image
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        currentInput.files = dataTransfer.files;
+
+        // ✅ Hide modal
+        modal.classList.add("hidden");
+        cropper.destroy();
+    }, "image/jpeg", 0.9); // 0.9 = high JPEG quality
+});
+
+    // ✅ Discount Preview Logic
+    const discountInput = document.getElementById("discount_percent");
+    const priceInput = document.getElementById("price");
+    const preview = document.getElementById("discounted_preview");
+    const categoryDiscount = parseFloat("{{ category_discount|default:0 }}");
+
+    function updateFinalPrice() {
+        const basePrice = parseFloat(priceInput.value) || 0;
+        const productDiscount = parseFloat(discountInput.value) || 0;
+        const bestDiscount = Math.max(productDiscount, categoryDiscount);
+        const finalPrice = basePrice - (basePrice * bestDiscount / 100);
+        preview.textContent = finalPrice.toFixed(2);
+    }
+
+    discountInput.addEventListener("input", updateFinalPrice);
+    priceInput.addEventListener("input", updateFinalPrice);
+
+    updateFinalPrice(); // ✅ Initial call to show correct value
+});
+
+</script>
+{% endblock %}

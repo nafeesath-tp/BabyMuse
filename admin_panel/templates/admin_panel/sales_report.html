@@ -1,0 +1,89 @@
+{% extends 'admin_panel/base.html' %}
+{% block content %}
+<div class="p-6 bg-gray-100 min-h-screen">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">📊 Sales Report</h1>
+
+    <!-- Filters -->
+    <form method="get" class="mb-6 bg-white p-4 rounded shadow flex flex-wrap items-center gap-4">
+        <select name="filter_type" class="border rounded px-3 py-2" onchange="this.form.submit()">
+            <option value="daily" {% if filter_type == 'daily' %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if filter_type == 'weekly' %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if filter_type == 'monthly' %}selected{% endif %}>Monthly</option>
+            <option value="custom" {% if filter_type == 'custom' %}selected{% endif %}>Custom</option>
+        </select>
+
+        {% if filter_type == 'custom' %}
+        <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="border rounded px-3 py-2">
+        <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="border rounded px-3 py-2">
+        {% endif %}
+
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Apply</button>
+    </form>
+
+    <!-- Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 shadow rounded text-center">
+            <p class="text-gray-500">Total Orders</p>
+            <h2 class="text-2xl font-bold">{{ total_orders }}</h2>
+        </div>
+        <div class="bg-white p-4 shadow rounded text-center">
+            <p class="text-gray-500">Total Sales</p>
+            <h2 class="text-2xl font-bold text-green-600">₹{{ total_sales_amount|floatformat:2 }}</h2>
+        </div>
+        <div class="bg-white p-4 shadow rounded text-center">
+            <p class="text-gray-500">Total Discount</p>
+            <h2 class="text-2xl font-bold text-red-500">₹{{ total_discount|floatformat:2 }}</h2>
+        </div>
+        <div class="bg-white p-4 shadow rounded text-center">
+            <p class="text-gray-500">Total Items</p>
+            <h2 class="text-2xl font-bold">{{ total_items }}</h2>
+        </div>
+    </div>
+
+    <!-- Download Buttons -->
+    <div class="mb-4">
+        <a href="{% url 'admin_panel:download_sales_report_pdf' %}?filter_type={{ filter_type }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}"
+           class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mr-2">Download PDF</a>
+        <a href="{% url 'admin_panel:download_sales_report_excel' %}?filter_type={{ filter_type }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}"
+           class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Download Excel</a>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="bg-white shadow rounded p-4 overflow-x-auto">
+        <table class="w-full border">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="py-2 px-4 border">Order ID</th>
+                    <th class="py-2 px-4 border">Customer</th>
+                    <th class="py-2 px-4 border">Date</th>
+                    <th class="py-2 px-4 border">Amount</th>
+                    <th class="py-2 px-4 border">Discount</th>
+                    <th class="py-2 px-4 border">Coupon</th>
+                    <th class="py-2 px-4 border">Final Amount</th>
+                    <th class="py-2 px-4 border">Status</th>
+                    <th class="py-2 px-4 border">Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td class="py-2 px-4 border">{{ order.id }}</td>
+                    <td class="py-2 px-4 border">{{ order.user }}</td>
+                    <td class="py-2 px-4 border">{{ order.date|date:"d M Y" }}</td>
+                    <td class="py-2 px-4 border">₹{{ order.amount|floatformat:2 }}</td>
+                    <td class="py-2 px-4 border">₹{{ order.discount|floatformat:2 }}</td>
+                    <td class="py-2 px-4 border">{{ order.coupon }}</td>
+                    <td class="py-2 px-4 border">₹{{ order.final_amount|floatformat:2 }}</td>
+                    <td class="py-2 px-4 border">{{ order.status }}</td>
+                    <td class="py-2 px-4 border">{{ order.items_count }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center py-4 text-gray-500">No Data Available</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white p-6 rounded shadow mt-10">
+    <h2 class="text-2xl font-semibold mb-6 text-center">Add Product</h2>
+
+    {% if form.errors or form.non_field_errors %}
+    <div class="bg-red-100 text-red-700 p-4 mb-4 rounded">
+        {% for error in form.non_field_errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+        {% for field in form %}
+        {% for error in field.errors %}
+        <p><strong>{{ field.label }}:</strong> {{ error }}</p>
+        {% endfor %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+            {{ form.name.label_tag }}<br />
+            {{ form.name }}
+        </div>
+
+        <div>
+            {{ form.category.label_tag }}<br />
+            {{ form.category }}
+        </div>
+
+        <div>
+            {{ form.description.label_tag }}<br />
+            {{ form.description }}
+        </div>
+
+        <div>
+            {{ form.price.label_tag }}<br />
+            {{ form.price }}
+        </div>
+
+        <div>
+            {{ form.stock.label_tag }}<br />
+            {{ form.stock }}
+        </div>
+
+        <div>
+            {{ form.status.label_tag }}<br />
+            {{ form.status }}
+        </div>
+
+        <div>
+            <label for="id_images" class="font-semibold block">Upload 3 Images</label>
+            {{ form.images }}
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                Save Product
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="bg-gradient-to-r from-pink-100 to-purple-100 py-12 text-center">
+  {% if request.user.is_authenticated %}
+  <h1 class="text-4xl font-bold text-pink-700">
+    Welcome back, {{ request.user.first_name|default:request.user.username }}!
+  </h1>
+  <p class="mt-4 text-gray-700">We've curated personalized picks for your baby.</p>
+  <a href="{% url 'shop:shop' %}"
+    class="mt-6 inline-block bg-pink-600 text-white px-6 py-3 rounded-full hover:bg-pink-700">Shop Now</a>
+  {% else %}
+  <h1 class="text-4xl font-bold text-pink-700">Welcome to BabyMuse 👶</h1>
+  <p class="mt-4 text-gray-700">Discover gentle care and joyful essentials for your little one.</p>
+  <a href="{% url 'user:user_login' %}"
+    class="mt-6 inline-block bg-pink-600 text-white px-6 py-3 rounded-full hover:bg-pink-700">Login to Personalize</a>
+  {% endif %}
+</section>
+
+<!-- Products Section -->
+<section class="py-10 px-6 max-w-6xl mx-auto">
+  <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+    {% if request.user.is_authenticated %}
+    Recommended for You
+    {% else %}
+    Featured Products
+    {% endif %}
+  </h2>
+
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    {% for product in products %}
+    <div class="bg-white p-4 rounded-xl shadow hover:shadow-lg transition relative group">
+      <img src="{{ product.primary_image }}" class="w-full h-40 object-cover rounded" alt="{{ product.name }}">
+
+      <h3 class="mt-2 font-medium text-gray-800 truncate">{{ product.name }}</h3>
+      <p class="text-sm text-gray-500">{{ product.brand.name }}</p>
+      <p class="text-pink-600 font-semibold mt-1">₹{{ product.price }}</p>
+
+      <div class="flex justify-between items-center mt-3 text-sm">
+        <a href="{% url 'shop:product_detail' product.id %}" class="text-pink-500 hover:underline">View</a>
+
+        <!-- Wishlist Button -->
+        {% if request.user.is_authenticated %}
+        <form method="post" action="{% url 'wishlist' product.id %}">
+          {% csrf_token %}
+          <button type="submit" class="text-red-500 hover:text-red-600" title="Add to Wishlist">
+            ❤️
+          </button>
+        </form>
+        {% else %}
+        <a href="{% url 'user:user_login' %}?next={% url 'shop:product_detail' product.id %}"
+          class="text-red-500 hover:text-red-600" title="Login to add to Wishlist">
+          ❤️
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Add to Cart Button -->
+      <div class="mt-3">
+        {% if request.user.is_authenticated %}
+        <form method="post" action="{% url 'shop:add_to_cart' product.id %}">
+          {% csrf_token %}
+          <button type="submit"
+            class="w-full bg-pink-500 hover:bg-pink-600 text-white py-1 rounded-full text-sm font-medium">
+            🛒 Add to Cart
+          </button>
+        </form>
+        {% else %}
+        <a href="{% url 'user:user_login' %}?next={% url 'shop:product_detail' product.id %}"
+          class="block w-full bg-pink-500 hover:bg-pink-600 text-white py-1 rounded-full text-sm text-center font-medium">
+          🛒 Login to Add
+        </a>
+        {% endif %}
+      </div>
+
+    </div>
+    {% empty %}
+    <p class="text-gray-500 text-sm">No products found.</p>
+    {% endfor %}
+  </div>
+</section>
+<script>
+  document.querySelectorAll(".cart-btn").forEach(btn => {
+    btn.addEventListener("click", function () {
+      const pid = this.dataset.pid;
+      fetch("{% url 'shop:ajax_add_to_cart' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ product_id: pid }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "success") {
+            this.innerText = "✅ Added";
+            document.getElementById("cart-count").innerText = data.cart_count;
+            showToast("🛒 Added to cart");
+          } else {
+            showToast("❌ " + (data.message || "Error"));
+          }
+        })
+        .catch(() => showToast("❌ Network error"));
+    });
+  });
+</script>
+{% endblock %}
