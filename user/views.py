@@ -560,6 +560,4 @@ def delete_address(request, address_id):
     return redirect('user:address_list')
 
 
-import random
-def otp():
-    return random.randint(111,999)
+
