@@ -1,7 +1,7 @@
 from shop.models import Product, Category, ProductImage
 from orders.models import Order,OrderItem
 from .models import AdminUser
-from datetime import datetime
+from datetime import datetime,timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
@@ -9,7 +9,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.http import HttpResponse
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, OuterRef, Subquery
 from django.contrib.auth import get_user_model
 from .forms import ProductForm
 from shop.forms import CategoryForm
@@ -17,6 +17,7 @@ from .decorators import admin_login_required
 from io import BytesIO
 from django.core.files.base import ContentFile
 from PIL import Image
+from django.contrib.auth.models import User
 import random
 import string
 import csv
@@ -28,10 +29,12 @@ from django.http import HttpResponseForbidden
 from .forms import ProductForm
 from shop.models import Product, ProductImage, Category
 from .forms import ProductForm, ProductVariantFormSet,ProductVariant
-from django.utils import timezone as dj_timezone
+
 from decimal import Decimal
-from datetime import datetime, timezone
-from django.utils import timezone
+from datetime import datetime, timezone as dt_timezone
+from django.utils import timezone as dj_timezone
+
+
 from PIL import Image, UnidentifiedImageError
 
 
@@ -42,6 +45,10 @@ from orders.models import Coupon
 import re
 
 import pytz
+from user.models import Wallet
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear
+import logging
 
 
 
@@ -105,21 +112,126 @@ def admin_forgot_password(request):
     return render(request, 'admin_panel/forgot_password.html')
 
 
+
+
+
+
+
+
+logger = logging.getLogger(__name__)
+
 @admin_login_required
 def admin_dashboard(request):
+    # Get filter type from query params (default = yearly)
+    filter_type = request.GET.get("filter", "yearly")
+    logger.debug(f"Filter type: {filter_type}")
+
+    # Determine the truncation function and status filter based on filter type
+    if filter_type == "daily":
+        sales_data = (
+            Order.objects.filter(status="Delivered")
+            .annotate(period=TruncDay("created_at"))
+            .values("period")
+            .annotate(total_sales=Sum("total_price"))
+            .order_by("period")
+        )
+    elif filter_type == "weekly":
+        sales_data = (
+            Order.objects.filter(status="Delivered")
+            .annotate(period=TruncWeek("created_at"))
+            .values("period")
+            .annotate(total_sales=Sum("total_price"))
+            .order_by("period")
+        )
+    elif filter_type == "monthly":
+        sales_data = (
+            Order.objects.filter(status="Delivered")
+            .annotate(period=TruncMonth("created_at"))
+            .values("period")
+            .annotate(total_sales=Sum("total_price"))
+            .order_by("period")
+        )
+    else:  # yearly
+        sales_data = (
+            Order.objects.filter(status="Delivered")
+            .annotate(period=TruncYear("created_at"))
+            .values("period")
+            .annotate(total_sales=Sum("total_price"))
+            .order_by("period")
+        )
+
+    # Convert sales data to chart-friendly format
+    chart_labels = [entry["period"].strftime("%d %b %Y") for entry in sales_data]
+    chart_data = [float(entry["total_sales"] or 0) for entry in sales_data]
+
+    # Dashboard summary stats
     total_users = User.objects.count()
     total_products = Product.objects.count()
     total_orders = Order.objects.count()
-    total_revenue = Order.objects.filter(status="paid").aggregate(
-        total=Sum('total_price'))['total'] or 0
-    latest_orders = Order.objects.order_by('-created_at')[:5]
-    return render(request, 'admin_panel/dashboard.html', {
-        'total_users': total_users,
-        'total_products': total_products,
-        'total_orders': total_orders,
-        'total_revenue': total_revenue,
-        'latest_orders': latest_orders,
+    total_revenue = (
+        Order.objects.filter(status="Delivered").aggregate(total=Sum("total_price"))["total"] or 0
+    )
+
+    # Latest orders
+    latest_orders = Order.objects.order_by("-created_at")[:5]
+
+    # ✅ Best selling products (top 10) with image + fallback
+    best_selling_products_raw = (
+        OrderItem.objects.filter(order__status="Delivered")
+        .values("product", "product__name", "product__category")  # include ids
+        .annotate(total_sold=Sum("quantity"))
+        .order_by("-total_sold")[:10]
+    )
+
+    best_selling_products = []
+    for item in best_selling_products_raw:
+        product = Product.objects.get(id=item["product"])
+        category = Category.objects.get(id=item["product__category"])
+
+        # fallback logic
+        if getattr(product, "primary_image", None):
+            image = product.primary_image.url if hasattr(product.primary_image, "url") else product.primary_image
+        elif getattr(category, "image", None):
+            image = category.image.url if hasattr(category.image, "url") else category.image
+        else:
+            image = None  # template will use static placeholder
+
+        best_selling_products.append({
+            "name": item["product__name"],
+            "total_sold": item["total_sold"],
+            "image": image,
+        })
+
+    # ✅ Best selling categories (top 10) with image
+    best_selling_categories_raw = (
+    OrderItem.objects.filter(order__status="Delivered")
+    .values("product__category__name")
+    .annotate(total_sold=Sum("quantity"))
+    .order_by("-total_sold")[:10]
+)
+
+    best_selling_categories = []
+    for item in best_selling_categories_raw:
+        best_selling_categories.append({
+        "name": item["product__category__name"],
+        "total_sold": item["total_sold"],
     })
+    return render(
+        request,
+        "admin_panel/dashboard.html",
+        {
+            "filter_type": filter_type,
+            "chart_labels": chart_labels,
+            "chart_data": chart_data,
+            "total_users": total_users,
+            "total_products": total_products,
+            "total_orders": total_orders,
+            "total_revenue": total_revenue,
+            "latest_orders": latest_orders,
+            "best_selling_products": best_selling_products,
+            "best_selling_categories": best_selling_categories,
+        },
+    )
 
 @admin_login_required
 def admin_profile(request):
@@ -578,36 +690,44 @@ def admin_order_detail(request, order_id):
 def admin_accept_return_item(request, item_id):
     item = get_object_or_404(OrderItem, id=item_id)
 
-   
     if item.order.status != 'Delivered':
         messages.error(request, "Only delivered orders can be returned.")
         return redirect('admin_panel:admin_order_detail', order_id=item.order.id)
 
-    
     if not item.is_return_requested:
         messages.warning(request, "Return not requested by user.")
         return redirect('admin_panel:admin_order_detail', order_id=item.order.id)
 
-    
     if item.is_returned:
         messages.info(request, "This item is already marked as returned.")
         return redirect('admin_panel:admin_order_detail', order_id=item.order.id)
 
-   
+    # Mark as returned
     item.is_returned = True
     item.save(update_fields=["is_returned"])
 
-    
+    # Update stock
     item.variant.stock += item.quantity
     item.variant.save(update_fields=["stock"])
 
-    
+    # If all items returned, update order status
     all_items = OrderItem.objects.filter(order=item.order)
     if all(i.is_returned for i in all_items):
         item.order.status = 'Return accepted'
         item.order.save(update_fields=["status"])
 
-    messages.success(request, f"Return accepted for '{item.variant.product.name}'. Stock updated.")
+        # 💰 Wallet Refund for full order
+        wallet, _ = Wallet.objects.get_or_create(user=item.order.user)
+        refund_amount = item.order.total_price  # Full order amount
+        wallet.credit(refund_amount, source=f"Refund for Order #{item.order.id} (Return accepted)")
+
+    else:
+        # 💰 Wallet Refund for only this item
+        wallet, _ = Wallet.objects.get_or_create(user=item.order.user)
+        refund_amount = item.price * item.quantity
+        wallet.credit(refund_amount, source=f"Refund for Item in Order #{item.order.id}")
+
+    messages.success(request, f"Return accepted for '{item.variant.product.name}'. Stock updated and refund credited to wallet.")
     return redirect('admin_panel:admin_order_detail', order_id=item.order.id)
 @admin_login_required
 def update_order_status(request, order_id):
@@ -647,8 +767,8 @@ def add_coupon(request):
 
         try:
            
-            start_dt = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
-            end_dt = datetime.fromisoformat(end_date).replace(tzinfo=timezone.utc)
+            start_dt = datetime.fromisoformat(start_date).replace(tzinfo=dt_timezone.utc)
+            end_dt = datetime.fromisoformat(end_date).replace(tzinfo=dt_timezone.utc)
         except ValueError:
             messages.error(request, "Invalid date format.")
             return redirect('admin_panel:add_coupon')

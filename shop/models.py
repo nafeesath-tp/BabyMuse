@@ -58,6 +58,7 @@ class Product(models.Model):
     is_listed = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    
     def __str__(self):
         return self.name
 
@@ -199,10 +200,15 @@ class CartItem(models.Model):
         unique_together = ('user', 'product', 'variant')  # 👈 ensure uniqueness per variant
         ordering = ['-added_at']
 
-class Review(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
-    rating = models.IntegerField(default=5)
-    comment = models.TextField(blank=True)
+class ProductReview(models.Model):
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rating = models.PositiveSmallIntegerField()  # e.g., 1 to 5
+    comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']  # newest first
+
+    def __str__(self):
+        return f"{self.user} - {self.product} ({self.rating})"

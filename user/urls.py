@@ -16,6 +16,7 @@ urlpatterns = [
     path('verify-signup-otp/', views.register_otp_verify, name='verify_signup_otp'),
     path('create-account/', views.create_account, name='create_account'),
     path('account-success/', views.account_success, name='account_success'),
+    path("wallet/", views.wallet_view, name="wallet"),
 
     # 🆕 Edit profile (separate page from viewing)
     path('profile/', views.profile_view, name='profile'),

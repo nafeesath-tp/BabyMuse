@@ -1,10 +1,12 @@
 {% extends 'admin_panel/base.html' %}
+{% load static %}
 {% block title %}Admin Dashboard – BabyMuse{% endblock %}
 
 {% block content %}
 <h1 class="text-2xl font-bold mb-6 text-blue-600">Welcome to BabyMuse Admin Dashboard</h1>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- === Stats Cards === -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
   <div class="bg-white p-6 rounded-xl shadow">
     <p class="text-gray-600 font-medium">Total Users</p>
     <h2 class="text-3xl font-bold text-blue-700">{{ total_users }}</h2>
@@ -18,5 +20,118 @@
     <h2 class="text-3xl font-bold text-blue-700">{{ total_products }}</h2>
   </div>
 </div>
-{% endblock %}
 
+<!-- === Sales Chart === -->
+<div class="bg-white p-6 rounded-xl shadow mb-8">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold text-blue-600">Sales Overview</h2>
+    <select id="chartFilter" class="border px-3 py-1 rounded">
+      <option value="yearly">Yearly</option>
+      <option value="monthly">Monthly</option>
+      <option value="weekly">Weekly</option>
+      <option value="daily">Daily</option>
+    </select>
+  </div>
+  <canvas id="salesChart" height="120"></canvas>
+</div>
+
+<!-- === Best Sellers === -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Best Selling Products -->
+  <div class="bg-white p-6 rounded-xl shadow">
+    <h2 class="text-xl font-bold text-blue-600 mb-4">Top 10 Best Selling Products</h2>
+    <ul>
+      {% for product in best_selling_products %}
+        <li class="mb-3 flex items-center">
+          {% if product.image %}
+            <img src="{{ product.image }}" alt="{{ product.name }}"
+                 class="w-10 h-10 rounded object-cover mr-3">
+          {% else %}
+            <img src="{% static 'images/placeholder.png' %}" alt="No Image"
+                 class="w-10 h-10 rounded object-cover mr-3">
+          {% endif %}
+          <span class="flex-1">{{ product.name }}</span>
+          <span class="font-semibold">{{ product.total_sold }}</span>
+        </li>
+      {% empty %}
+        <p>No sales data available.</p>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- Best Selling Categories -->
+  <div class="bg-white p-6 rounded-xl shadow">
+    <h2 class="text-xl font-bold text-blue-600 mb-4">Top 10 Best Selling Categories</h2>
+    <ul>
+      {% for category in best_selling_categories %}
+        <li class="mb-3 flex items-center">
+         
+          <span class="flex-1">{{ category.name }}</span>
+          <span class="font-semibold">{{ category.total_sold }}</span>
+        </li>
+      {% empty %}
+        <p>No sales data available.</p>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<!-- Add json_script tags before the script -->
+{% if chart_labels or chart_data %}
+  {{ chart_labels|json_script:"chart-labels" }}
+  {{ chart_data|json_script:"chart-data" }}
+{% else %}
+  <script id="chart-labels" type="application/json">[]</script>
+  <script id="chart-data" type="application/json">[]</script>
+{% endif %}
+<!-- === ChartJS Script with json_script === -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // Render data using json_script
+  const chartLabelsElement = document.getElementById('chart-labels');
+  const chartDataElement = document.getElementById('chart-data');
+  const chartLabels = JSON.parse(chartLabelsElement.textContent);
+  const chartData = JSON.parse(chartDataElement.textContent);
+
+  console.log('Chart Labels:', chartLabels); // Debug log
+  console.log('Chart Data:', chartData);     // Debug log
+
+  const ctx = document.getElementById('salesChart').getContext('2d');
+  let salesChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: 'Sales Amount',
+        data: chartData,
+        borderColor: 'rgb(37, 99, 235)',
+        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: 'Sales Amount (₹)' } },
+        x: { title: { display: true, text: 'Date' } }
+      }
+    }
+  });
+
+  // Filter change handler (reload page with filter param)
+  document.getElementById("chartFilter").addEventListener("change", function() {
+    const filter = this.value;
+    console.log("Changing filter to:", filter); // Debug log
+    window.location.href = "?filter=" + filter;
+  });
+
+  // Preselect current filter based on URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentFilter = urlParams.get('filter') || 'weekly'; // Default to 'weekly'
+  document.getElementById("chartFilter").value = currentFilter;
+</script>
+
+
+{% endblock %}

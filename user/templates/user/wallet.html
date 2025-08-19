@@ -1,0 +1,54 @@
+{% extends 'core/base.html' %} 
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Wallet Card -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(90deg, #ff80ab, #ff4081);">
+                    <h4 class="mb-0">💰 My Wallet</h4>
+                    <span class="badge bg-light text-dark fs-6 px-3 py-2 shadow-sm">Balance: ₹{{ wallet.balance }}</span>
+                </div>
+                <div class="card-body">
+                    <h5 class="mb-3">📜 Transaction History</h5>
+                    {% if transactions %}
+                        <table class="table table-striped table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.date|date:"d M Y, H:i" }}</td>
+                                    <td>
+                                        {% if transaction.type == "credit" %}
+                                            <span class="badge bg-success px-2 py-1">Credit</span>
+                                        {% else %}
+                                            <span class="badge bg-danger px-2 py-1">Debit</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>₹{{ transaction.amount }}</td>
+                                    <td>{{ transaction.source }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <h1 style="font-size:3rem;">🪙</h1>
+                            <p class="mt-2">Your wallet is empty.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

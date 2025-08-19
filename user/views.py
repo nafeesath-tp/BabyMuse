@@ -22,7 +22,7 @@ from .models import Profile
 from .utils import generate_and_send_otp
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import io
-
+from .models import Wallet
 
 
 
@@ -558,6 +558,13 @@ def delete_address(request, address_id):
     address.delete()
     messages.success(request, "Address deleted.")
     return redirect('user:address_list')
-
+@login_required
+def wallet_view(request):
+    wallet, created = Wallet.objects.get_or_create(user=request.user) 
+    transactions = wallet.transactions.all().order_by("-date")
+    return render(request, "user/wallet.html", {
+        "wallet": wallet,
+        "transactions": transactions
+    })
 
 

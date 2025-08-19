@@ -27,6 +27,7 @@ from django.views.decorators.csrf import csrf_exempt
 from orders.models import Payment
 from django.middleware.csrf import get_token
 from .models import Coupon
+from user.models import Wallet
 
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -41,6 +42,7 @@ from reportlab.lib.units import inch
 import io
 import os
 from decimal import Decimal
+
 
 
 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
@@ -93,13 +95,27 @@ def cancel_order_view(request, order_id):
 
     if request.method == "POST":
         reason = request.POST.get("reason", "")  
+
         with transaction.atomic():
-            for item in order.items.select_related("product"):
-                item.product.stock += item.quantity
-                item.product.save(update_fields=["stock"])
+            # ✅ Restore stock
+            for item in order.items.select_related("variant"):
+                if item.variant:
+                    item.variant.stock += item.quantity
+                    item.variant.save(update_fields=["stock"])
+
+            order.is_refunded = False
+
+            # ✅ Refund if applicable
+            if order.payment and order.payment.method in ["Razorpay", "Wallet"] and order.status == "Processing":
+                wallet, _ = Wallet.objects.get_or_create(user=request.user)
+                wallet.credit(order.payment.amount, source=f"Refund for Order #{order.id}")
+                order.is_refunded = True
+
+            # ✅ Cancel order
             order.status = "Cancelled"
-            order.save(update_fields=["status"])
-        messages.success(request, "Order cancelled ✔️")
+            order.save(update_fields=["status", "is_refunded"])
+
+        messages.success(request, "Order cancelled ✔️ Refund credited to wallet if applicable.")
         return redirect("orders:order_detail", order_id=order.id)
 
     return render(request, "orders/order_cancel_confirm.html", {"order": order})
@@ -294,7 +310,8 @@ def checkout_view(request):
                         user=user,
                         method="COD",
                         amount=final_total_after_discount,
-                        status="success"
+                        status="success",
+                        order=order
                     )
 
                     # ✅ Increment coupon usage safely
@@ -311,6 +328,63 @@ def checkout_view(request):
 
             except Exception as e:
                 messages.error(request, f"COD order placement failed: {e}")
+
+        # ✅ WALLET
+        if payment_method == "Wallet":
+            try:
+                wallet = Wallet.objects.get(user=user)
+
+                if wallet.balance < final_total_after_discount:
+                    messages.error(request, "Insufficient Wallet Balance!")
+                    return redirect("orders:checkout")
+
+                with transaction.atomic():
+                    # Deduct balance
+                    wallet.debit(final_total_after_discount, source="Order Payment")
+
+                    order = Order.objects.create(
+                        user=user,
+                        address=address,
+                        total_price=final_total_after_discount,
+                        payment_method="Wallet",
+                        status="Processing",
+                        applied_coupon=applied_coupon
+                    )
+
+                    for item in cart_items:
+                        OrderItem.objects.create(
+                            order=order,
+                            product=item.product,
+                            variant=item.variant,
+                            quantity=item.quantity,
+                            price=item.product.discounted_price,
+                        )
+                        item.variant.stock -= item.quantity
+                        item.variant.save(update_fields=["stock"])
+
+                    Payment.objects.create(
+                        user=user,
+                        method="Wallet",
+                        amount=final_total_after_discount,
+                        status="success",
+                        order=order
+                    )
+
+                    if applied_coupon:
+                        Coupon.objects.filter(id=applied_coupon.id).update(
+                            used_count=F('used_count') + 1
+                        )
+                        request.session.pop('applied_coupon', None)
+
+                    cart_items.delete()
+
+                messages.success(request, "Order placed successfully using Wallet.")
+                return redirect("orders:order_success", order_id=order.id)
+
+            except Exception as e:
+                messages.error(request, f"Wallet order placement failed: {e}")
+                return redirect("orders:checkout")
+
     available_coupons = Coupon.objects.filter(
         is_active=True,
         start_date__lte=timezone.now(),
@@ -387,7 +461,8 @@ def razorpay_success(request):
                 method="Razorpay",
                 amount=order.total_price,
                 transaction_id=payment_id,
-                status="success"
+                status="success",
+                order = order
             )
 
             # ✅ Increment coupon usage

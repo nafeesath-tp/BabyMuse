@@ -69,7 +69,7 @@
                                     <span class="text-green-600 font-semibold">₹{{ item.price_to_show|floatformat:2 }}</span>
                                 </p>
                             {% else %}
-                                <p class="text-sm text-gray-500">Total: ₹{{ item.total_price|floatformat:2 }}</p>
+                                
                                 <p class="font-semibold">Total:₹{{ item.price_to_show|floatformat:2 }}</p>
                             {% endif %}
                             
@@ -115,6 +115,7 @@
                 <option value="">Choose Payment Method</option>
                 <option value="COD">Cash on Delivery</option>
                 <option value="Razorpay">Razorpay</option>
+                <option value="Wallet">Wallet</option>
             </select>
         </div>
 
@@ -177,7 +178,7 @@ document.getElementById("placeOrderBtn").addEventListener("click", function () {
         return;
     }
 
-    if (paymentMethod === "COD") {
+    if (paymentMethod === "COD" || paymentMethod === "Wallet") {
         // ✅ Submit form for COD
         form.submit();
     }

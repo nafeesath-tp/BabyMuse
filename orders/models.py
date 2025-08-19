@@ -51,6 +51,8 @@ class Order(models.Model):
     is_returned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     razorpay_order_id = models.CharField(max_length=100, null=True, blank=True)
+    is_refunded = models.BooleanField(default=False)
+
 
     def update_total_price(self):
         self.total_price = sum(item.subtotal() for item in self.items.all())
@@ -79,8 +81,15 @@ class Payment(models.Model):
         ("Razorpay", "Razorpay"),
         ("Wallet", "Wallet"),  
     ]
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+        ("refunded", "Refunded"),   # 👈 added
+    ]
 
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    order = models.OneToOneField("Order", on_delete=models.CASCADE, related_name="payment", null=True, blank=True)
     method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_id = models.CharField(max_length=100, blank=True, null=True)
@@ -128,6 +137,7 @@ class Coupon(models.Model):
         now = timezone.now()
         return self.is_active and self.start_date <= now <= self.end_date and\
                (self.usage_limit == 0 or self.used_count < self.usage_limit)
+
 
     def __str__(self):
         return self.code

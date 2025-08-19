@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 import random
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
 
 
 class CustomUser(AbstractUser):
@@ -59,3 +60,41 @@ class Address(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.city}"
+class Wallet(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    def credit(self, amount, source=None):
+        self.balance += amount
+        self.save()
+        WalletTransaction.objects.create(
+            wallet=self,
+            transaction_type="credit",
+            amount=amount,
+            source=source,
+            date=timezone.now()
+        )
+
+    def debit(self, amount, source=None):
+        if self.balance >= amount:
+            self.balance -= amount
+            self.save()
+            WalletTransaction.objects.create(
+                wallet=self,
+                transaction_type="debit",
+                amount=amount,
+                source=source,
+                date=timezone.now()
+            )
+            return True
+        return False  # Not enough balance
+
+class WalletTransaction(models.Model):
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="transactions")
+    transaction_type = models.CharField(max_length=10, choices=[("credit", "Credit"), ("debit", "Debit")])
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    source = models.CharField(max_length=255, null=True, blank=True)  # e.g., "Order #123"
+    date = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.transaction_type.capitalize()} - {self.amount} ({self.date})"

@@ -5,12 +5,13 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Avg
+from .forms import ProductReviewForm
 import json
 from orders.models import Order
 from django.views.decorators.cache import never_cache
 from django.conf import settings
 
-from .models import Product, Category, Wishlist, CartItem, Review, ProductVariant,ProductOffer
+from .models import Product, Category, Wishlist, CartItem, ProductReview, ProductVariant,ProductOffer
 from django.urls import reverse
 
 
@@ -72,41 +73,50 @@ def shop_view(request):
 @never_cache
 def product_detail(request, pk):
     try:
-        product = Product.objects.prefetch_related(
-            'images', 'variants').get(pk=pk)
+        product = Product.objects.prefetch_related('images', 'variants').get(pk=pk)
         offer = ProductOffer.objects.filter(product=product, is_active=True).order_by('-id').first()
 
-
-        reviews = Review.objects.filter(
-            product=product).order_by('-created_at')
+        # Reviews
+        reviews = ProductReview.objects.filter(product=product).order_by('-created_at')
         avg_rating = reviews.aggregate(avg=Avg('rating'))['avg']
         total_reviews = reviews.count()
-        print("Product instance used in variant filter:", product)
-        print("Product ID:", product.id)
-        print("Product type:", type(product))
 
+        # Variants
         variants = ProductVariant.objects.filter(
-               product__id=product.id,
-                            is_listed=True,
-                                 stock__gt=0)  # Optional: only include those in stock
+            product__id=product.id,
+            is_listed=True,
+            stock__gt=0
+        )
 
-        
-
-        
-       
         sizes = set()
-
         for variant in variants:
             if variant.size:
                 sizes.add(variant.size)
 
-        # Normalize product name
+        # Determine if we should show size selection
         name = product.name.strip().lower()
+        show_size = any(x in name for x in ['disposible diaper', 'ethnicwear', 'frocks'])
 
-        show_size = any(x in name for x in [
-                        'disposible diaper', 'ethnicwear', 'frocks'])
-        best_discount = max(product.category.discount_percent if product.category else 0,
-                    offer.discount_percent if offer else 0)
+        best_discount = max(
+            product.category.discount_percent if product.category else 0,
+            offer.discount_percent if offer else 0
+        )
+
+        # Handle review submission
+        if request.method == 'POST':
+            if request.user.is_authenticated:
+                review_form = ProductReviewForm(request.POST)
+                if review_form.is_valid():
+                    review = review_form.save(commit=False)
+                    review.product = product
+                    review.user = request.user
+                    review.save()
+                    return redirect('shop:product_detail', pk=product.pk)
+            else:
+                return redirect('user:user_login')
+
+        else:
+            review_form = ProductReviewForm()
 
         context = {
             'product': product,
@@ -115,10 +125,12 @@ def product_detail(request, pk):
             'sizes': sorted(sizes),
             'show_size': show_size,
             'final_discount': best_discount,
-            
-            'discounted_price':product.discounted_price,
-            'offer':offer,
-
+            'discounted_price': product.discounted_price,
+            'offer': offer,
+            'reviews': reviews,
+            'avg_rating': avg_rating,
+            'total_reviews': total_reviews,
+            'review_form': review_form,
         }
 
         return render(request, 'shop/product_detail.html', context)
@@ -126,7 +138,6 @@ def product_detail(request, pk):
     except Product.DoesNotExist:
         messages.error(request, "⚠️ Product not found or has been removed.")
         return redirect('shop')
-
 
 @login_required
 def wishlist_view(request):
@@ -191,7 +202,8 @@ import json
 @require_POST
 def ajax_add_to_cart(request):
     if not request.user.is_authenticated:
-        return JsonResponse({'redirect_url': reverse('user:user_login')}, status=401)
+        print("user is not authenticated")
+        return JsonResponse({'status': 'login_required', 'redirect_url': reverse('user:user_login')})
 
     # ✅ Handle JSON body
     if request.content_type == 'application/json':
@@ -251,7 +263,7 @@ def ajax_add_to_cart(request):
     Wishlist.objects.filter(user=request.user, product=product).delete()
 
     cart_count = CartItem.objects.filter(user=request.user).count()
-    return JsonResponse({'status': 'success', 'cart_count': cart_count})
+    return JsonResponse({'status': 'success', 'cart_count': cart_count,'message': 'Product added to cart successfully!'})
 
 @login_required
 @require_POST

@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from shop.models import Product, Wishlist, CartItem
+from django.db.models import Q
 
 
 def home_view(request):
@@ -27,15 +28,21 @@ def home_view(request):
 
 
 
-def search(request):
-    query = request.GET.get('query', '')  
-   
-    results = []  
-    return render(request, 'core/search_results.html', {
-        'query': query,
-        'results': results
-    })
+from shop.models import Product
 
+def search_results(request):
+    query = request.GET.get("q", "").strip()
+    products = Product.objects.none()  # default empty queryset
+
+    if query:  
+        products = Product.objects.filter(
+            Q(name__icontains=query) | Q(category__name__icontains=query)
+        ).distinct()
+
+    return render(request, "core/search_results.html", {
+        "query": query,
+        "products": products,
+    })
 
 def about(request):
     return render(request, 'core/about.html')
