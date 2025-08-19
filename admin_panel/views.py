@@ -210,12 +210,11 @@ def admin_dashboard(request):
     .order_by("-total_sold")[:10]
 )
 
-    best_selling_categories = []
-    for item in best_selling_categories_raw:
-        best_selling_categories.append({
-        "name": item["product__category__name"],
-        "total_sold": item["total_sold"],
-    })
+    best_selling_categories = [
+    {"name": item["product__category__name"], "total_sold": item["total_sold"]}
+    for item in best_selling_categories_raw
+]
+
     return render(
         request,
         "admin_panel/dashboard.html",
@@ -710,25 +709,46 @@ def admin_accept_return_item(request, item_id):
     item.variant.stock += item.quantity
     item.variant.save(update_fields=["stock"])
 
-    # If all items returned, update order status
+    # Get all items in the order
     all_items = OrderItem.objects.filter(order=item.order)
+    wallet, _ = Wallet.objects.get_or_create(user=item.order.user)
+
+    # Total order info
+    total_order_amount = sum(i.price * i.quantity for i in all_items)
+    total_paid = item.order.total_paid
+
+    # Calculate total refunded so far (excluding this item)
+    refunded_so_far = sum(i.refund_amount for i in all_items if i.id != item.id)
+
     if all(i.is_returned for i in all_items):
+        # Full order returned
+        refund_amount = total_paid - refunded_so_far  # remaining amount
         item.order.status = 'Return accepted'
         item.order.save(update_fields=["status"])
-
-        # 💰 Wallet Refund for full order
-        wallet, _ = Wallet.objects.get_or_create(user=item.order.user)
-        refund_amount = item.order.total_price  # Full order amount
-        wallet.credit(refund_amount, source=f"Refund for Order #{item.order.id} (Return accepted)")
-
     else:
-        # 💰 Wallet Refund for only this item
-        wallet, _ = Wallet.objects.get_or_create(user=item.order.user)
-        refund_amount = item.price * item.quantity
-        wallet.credit(refund_amount, source=f"Refund for Item in Order #{item.order.id}")
+        # Partial return with proportional discount
+        if total_order_amount > 0:
+            proportion = (item.price * item.quantity) / total_order_amount
+            refund_amount = (proportion * total_paid) - item.refund_amount
+            refund_amount = max(refund_amount, 0)
+        else:
+            refund_amount = item.price * item.quantity
 
-    messages.success(request, f"Return accepted for '{item.variant.product.name}'. Stock updated and refund credited to wallet.")
+    # Update item refund_amount
+    item.refund_amount = refund_amount
+    item.save(update_fields=["refund_amount"])
+
+    # Credit wallet
+    wallet.credit(refund_amount, source=f"Refund for Item/Order #{item.order.id}")
+
+    messages.success(
+        request,
+        f"Return accepted for '{item.variant.product.name}'. "
+        f"Stock updated and ₹{refund_amount:.2f} credited to wallet."
+    )
     return redirect('admin_panel:admin_order_detail', order_id=item.order.id)
+
+
 @admin_login_required
 def update_order_status(request, order_id):
     order = get_object_or_404(Order, id=order_id)

@@ -271,6 +271,8 @@ def checkout_view(request):
                 user=user,
                 address=address,
                 total_price=final_total_after_discount,
+                total_paid=final_total_after_discount,
+
                 payment_method="Razorpay",
                 status="Pending",
                 razorpay_order_id=razorpay_order["id"],
@@ -291,6 +293,8 @@ def checkout_view(request):
                         user=user,
                         address=address,
                         total_price=final_total_after_discount,
+                        total_paid=final_total_after_discount,
+
                         payment_method="COD",
                         applied_coupon=applied_coupon
                     )
@@ -346,6 +350,8 @@ def checkout_view(request):
                         user=user,
                         address=address,
                         total_price=final_total_after_discount,
+                        total_paid=final_total_after_discount,
+
                         payment_method="Wallet",
                         status="Processing",
                         applied_coupon=applied_coupon

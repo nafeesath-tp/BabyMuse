@@ -46,6 +46,7 @@ class Order(models.Model):
     related_name='orders'
 )
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     status = models.CharField(max_length=20, choices=ORDER_STATUS, default='Pending')
     payment_method = models.CharField(max_length=30, default='COD')
     is_returned = models.BooleanField(default=False)
@@ -108,6 +109,8 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True)
+    refund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
     is_returned = models.BooleanField(default=False)
     return_reason = models.TextField(blank=True, null=True)
     is_return_requested = models.BooleanField(default=False) 
