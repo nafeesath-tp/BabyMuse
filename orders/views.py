@@ -86,39 +86,41 @@ def order_detail_view(request, order_id):
 
 
 @login_required
-def cancel_order_view(request, order_id):
-    order = get_object_or_404(Order, pk=order_id, user=request.user)
+def cancel_order_item_view(request, item_id):
+    item = get_object_or_404(OrderItem, pk=item_id, order__user=request.user)
 
-    if order.status in ("Cancelled", "Delivered"):
-        messages.error(request, "This order can’t be cancelled.")
-        return redirect("orders:order_detail", order_id=order.id)
+    if item.is_cancelled or item.is_returned:
+        messages.error(request, "This item can’t be cancelled.")
+        return redirect("orders:order_detail", order_id=item.order.id)
+
+    if item.order.status not in ["Pending", "Processing"]:
+        messages.error(request, "Only items from pending or processing orders can be cancelled.")
+        return redirect("orders:order_detail", order_id=item.order.id)
 
     if request.method == "POST":
-        reason = request.POST.get("reason", "")  
+        reason = request.POST.get("reason", "")
 
         with transaction.atomic():
             # ✅ Restore stock
-            for item in order.items.select_related("variant"):
-                if item.variant:
-                    item.variant.stock += item.quantity
-                    item.variant.save(update_fields=["stock"])
+            if item.variant:
+                item.variant.stock += item.quantity
+                item.variant.save(update_fields=["stock"])
 
-            order.is_refunded = False
+            # ✅ Mark item as cancelled
+            item.is_cancelled = True
+            item.cancel_reason = reason
+            item.save(update_fields=["is_cancelled", "cancel_reason"])
 
             # ✅ Refund if applicable
-            if order.payment and order.payment.method in ["Razorpay", "Wallet"] and order.status == "Processing":
+            if item.order.payment and item.order.payment.method in ["Razorpay", "Wallet"]:
                 wallet, _ = Wallet.objects.get_or_create(user=request.user)
-                wallet.credit(order.payment.amount, source=f"Refund for Order #{order.id}")
-                order.is_refunded = True
+                wallet.credit(item.price * item.quantity, source=f"Cancelled item '{item.product.name}' from Order #{item.order.order_id}")
 
-            # ✅ Cancel order
-            order.status = "Cancelled"
-            order.save(update_fields=["status", "is_refunded"])
+        messages.success(request, f"'{item.product.name}' cancelled ✔️ Refund credited to wallet if applicable.")
+        return redirect("orders:order_detail", order_id=item.order.id)
 
-        messages.success(request, "Order cancelled ✔️ Refund credited to wallet if applicable.")
-        return redirect("orders:order_detail", order_id=order.id)
+    return render(request, "orders/order_item_cancel_confirm.html", {"item": item})
 
-    return render(request, "orders/order_cancel_confirm.html", {"order": order})
 
 
 @login_required

@@ -110,6 +110,8 @@ class OrderItem(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True)
     refund_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_cancelled = models.BooleanField(default=False)
+    cancel_reason = models.TextField(blank=True, null=True)
 
     is_returned = models.BooleanField(default=False)
     return_reason = models.TextField(blank=True, null=True)

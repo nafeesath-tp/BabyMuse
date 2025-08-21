@@ -66,7 +66,6 @@
  {% with first_variant=variants.0 %}
   {% if first_variant %}
     <div class="text-2xl text-pink-600 font-semibold">
-      
       <span id="display-price">
         ₹{{ discounted_price }}
       </span>
@@ -75,8 +74,6 @@
     <p class="text-red-500 text-sm mt-2">Price not available</p>
   {% endif %}
 {% endwith %}
-
-
     </div>
 
     <!-- Size Variants -->
@@ -152,7 +149,7 @@
         data-product-id="{{ product.id }}">🛒 Add to Cart</button>
 
       <button id="add-to-wishlist-btn" class="bg-pink-500 text-white px-5 py-2 rounded hover:bg-pink-600 transition"
-        data-product-id="{{ product.id }}">❤️ Add to Wishlist</button>
+        data-product-id="{{ product.id }}" data-variant-id="{{ selected_variant.id }}">❤️ Add to Wishlist</button>
     </div>
   </div>
 </div>
@@ -161,6 +158,7 @@
 <div id="toast"
   class="fixed top-5 right-5 px-4 py-2 rounded shadow hidden z-50 bg-green-100 text-green-800 border border-green-400">
 </div>
+
 <!-- Product Reviews Section -->
 <div class="max-w-6xl mx-auto px-6 mt-10 border-t pt-6">
 
@@ -241,9 +239,7 @@
         const ratingInput = document.getElementById("id_rating");
         let currentRating = 0;
 
-        stars.forEach((star, index) => {
-
-          // Hover preview
+        stars.forEach((star) => {
           star.addEventListener("mouseover", function() {
             const value = parseInt(this.dataset.value);
             stars.forEach((s, i) => {
@@ -253,7 +249,6 @@
             });
           });
 
-          // Remove hover preview when mouse leaves
           star.addEventListener("mouseout", function() {
             stars.forEach((s, i) => {
               s.textContent = i < currentRating ? "⭐" : "☆";
@@ -262,7 +257,6 @@
             });
           });
 
-          // Click to select rating
           star.addEventListener("click", function() {
             currentRating = parseInt(this.dataset.value);
             ratingInput.value = currentRating;
@@ -273,7 +267,6 @@
               s.classList.toggle("text-gray-400", i >= currentRating);
             });
           });
-
         });
       });
     </script>
@@ -323,24 +316,20 @@
     const stockMessage = document.getElementById("stock-message");
     const lowStockMessage = document.getElementById("low-stock-message");
 
-    // Hide all alerts first
     stockAlert.classList.add("hidden");
     lowStockAlert.classList.add("hidden");
 
     if (stock <= 0) {
-      // Out of stock
       stockAlert.classList.remove("hidden");
       stockMessage.textContent = `${variantName} is currently out of stock.`;
       cartBtn.disabled = true;
       cartBtn.classList.add("disabled:bg-gray-400", "disabled:cursor-not-allowed");
     } else if (stock <= 5) {
-      // Low stock
       lowStockAlert.classList.remove("hidden");
       lowStockMessage.textContent = `Only ${stock} items left for ${variantName}!`;
       cartBtn.disabled = false;
       cartBtn.classList.remove("disabled:bg-gray-400", "disabled:cursor-not-allowed");
     } else {
-      // Normal stock
       cartBtn.disabled = false;
       cartBtn.classList.remove("disabled:bg-gray-400", "disabled:cursor-not-allowed");
     }
@@ -365,6 +354,25 @@
     }
   }
 
+  // --- CSRF from cookie (reliable in Django) ---
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+  const csrftoken = getCookie('csrftoken');
+
+  // --- Wishlist Count Helper (updates header without refresh) ---
+  function bumpWishlistCount(delta) {
+    const el = document.getElementById('wishlist-count'); // put this id in your header badge
+    if (!el) return;
+    const current = parseInt(el.textContent) || 0;
+    const next = Math.max(0, current + delta);
+    el.textContent = String(next);
+    el.classList.remove('hidden');
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     const variantRadios = document.querySelectorAll('.size-variant-radio');
     const variantOptions = document.querySelectorAll('.variant-option');
@@ -378,12 +386,11 @@
       const firstVariant = variantRadios[0];
       const firstOption = variantOptions[0];
       
-      // Set initial active state
       firstOption.classList.remove('border-gray-300');
       firstOption.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
       
-      // Update initial stock status
-      updateStockStatus(parseInt(firstVariant.dataset.stock), firstVariant.dataset.variantName);
+      // FIX: use dataset.size (you set data-size on radios)
+      updateStockStatus(parseInt(firstVariant.dataset.stock), firstVariant.dataset.size);
       updatePrice(firstVariant);
       
       if (selectedVariantStock) {
@@ -402,33 +409,27 @@
     variantOptions.forEach((option, index) => {
       option.addEventListener('click', function() {
         const stock = parseInt(this.dataset.stock);
-        
-        // Don't allow selection of out of stock items
         if (stock <= 0) {
           showToast("This size is out of stock!", false);
           return;
         }
 
-        // Remove active state from all options
         variantOptions.forEach(opt => {
           opt.classList.remove('border-pink-500', 'bg-pink-50', 'text-pink-700');
           opt.classList.add('border-gray-300');
         });
         
-        // Add active state to clicked option
         this.classList.remove('border-gray-300');
         this.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
         
-        // Select the radio button
         const radio = variantRadios[index];
         radio.checked = true;
         
-        // Update selected variant name
         if (selectedVariantName) {
-          selectedVariantName.textContent = radio.dataset.variantName;
+          // FIX: use dataset.size
+          selectedVariantName.textContent = radio.dataset.size;
         }
         
-        // Update stock status display
         if (selectedVariantStock) {
           if (stock <= 0) {
             selectedVariantStock.innerHTML = '<span class="text-red-500">(Out of Stock)</span>';
@@ -439,15 +440,13 @@
           }
         }
         
-        // Update stock alerts and button state
-        updateStockStatus(stock, radio.dataset.variantName);
-        
-        // Update price
+        // FIX: use dataset.size
+        updateStockStatus(stock, radio.dataset.size);
         updatePrice(radio);
       });
     });
 
-    // Cart button functionality
+    // Cart button functionality (use CSRF from cookie)
     if (cartBtn) {
       cartBtn.addEventListener("click", function () {
         if (this.disabled) {
@@ -458,7 +457,6 @@
         const productId = this.dataset.productId;
         const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
         
-        // Check if variant is selected and in stock
         if (selectedVariant) {
           const stock = parseInt(selectedVariant.dataset.stock);
           if (stock <= 0) {
@@ -467,89 +465,123 @@
           }
         }
         
-        let body = `product_id=${productId}`;
+        let body = `product_id=${encodeURIComponent(productId)}`;
         if (selectedVariant) {
-          body += `&variant_id=${selectedVariant.value}`;
+          body += `&variant_id=${encodeURIComponent(selectedVariant.value)}`;
         }
         
         fetch("{% url 'shop:ajax_add_to_cart' %}", {
           method: "POST",
           headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
+            "X-CSRFToken": csrftoken,
+            "Accept": "application/json",
             "Content-Type": "application/x-www-form-urlencoded"
           },
-          body: body
+          credentials: "same-origin",
+          body
         })
-          
-          .then(res => res.json())
-          .then(data => {
-          if(!data){
-            return;
-          };
+        .then(res => res.json())
+        .then(data => {
+          if (!data) return;
 
-          // 🔹 Redirect if not logged in
-          if(data.status === "login_required" && data.redirect_url){
+          if (data.status === "login_required" && data.redirect_url){
             window.location.href = data.redirect_url + '?next=' + window.location.pathname;
             return;
           }
-
-          if(data.status === "success"){
+          if (data.status === "success"){
             showToast(data.message);
-          } else if(data.status === "error"){
-            showToast(data.message || "Add to cart has been failed.");
+          } else if (data.status === "error"){
+            showToast(data.message || "Add to cart has been failed.", false);
           }
         })
-          .catch(error => {
-            console.error('Error:', error);
-            showToast("An error occurred. Please try again.", false);
-          });
+        .catch(() => {
+          showToast("An error occurred. Please try again.", false);
+        });
       });
     }
 
-  
-    // Wishlist button functionality
-if (wishlistBtn) {
-  wishlistBtn.addEventListener("click", function () {
-    const productId = this.dataset.productId;
-    const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
-    
-    let body = `product_id=${productId}`;
-    if (selectedVariant) {
-      body += `&variant_id=${selectedVariant.value}`;
-    }
-    
-    fetch("{% url 'shop:ajax_add_to_wishlist' %}", {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": "{{ csrf_token }}",
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: body,
-      redirect: "manual" // important for detecting redirect
-    })
-    .then(res => {
-      if (res.status === 302) {
-        // User is not logged in, redirect to login page
-        window.location.href = "{% url 'user:user_login' %}";
-        return;
-      }
-      return res.json();
-    })
-    .then(data => {
-      if (!data) return; // already redirected
-      if (data.status === 'added') {
-        showToast("Added to wishlist!");
-      } else {
-        showToast("Already in wishlist", false);
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      showToast("An error occurred. Please try again.", false);
-    });
-  });
-}
+    // --- Wishlist button: update UI WITHOUT refresh ---
+    if (wishlistBtn) {
+      wishlistBtn.addEventListener("click", function () {
+        const productId = this.dataset.productId;
+        const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
+        
+        let body = `product_id=${encodeURIComponent(productId)}`;
+        if (selectedVariant) {
+          body += `&variant_id=${encodeURIComponent(selectedVariant.value)}`;
+        }
+        
+        fetch("{% url 'shop:ajax_add_to_wishlist' %}", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrftoken,
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          credentials: "same-origin",
+          body
+        })
+        .then(async (res) => {
+          // If server redirected (e.g., to login), go there
+          if (res.redirected) {
+            window.location.href = res.url;
+            return null;
+          }
+          // Handle 401/403 (not logged in)
+          if (res.status === 401 || res.status === 403) {
+            window.location.href = "{% url 'user:user_login' %}" + '?next=' + window.location.pathname;
+            return null;
+          }
+          // Try to parse JSON
+          try {
+            return await res.json();
+          } catch {
+            return null;
+          }
+        })
+        .then((data) => {
+          if (!data) return;
 
+          // Expecting: {status: 'added' | 'exists' | 'removed', count: <optional new count> }
+          if (data.status === 'added') {
+            // update count if provided, else +1
+            if (typeof data.count === 'number') {
+              const el = document.getElementById('wishlist-count');
+              if (el) { el.textContent = String(data.count); el.classList.remove('hidden'); }
+            } else {
+              bumpWishlistCount(1);
+            }
+            // update button instantly
+            wishlistBtn.textContent = '❤️ In Wishlist';
+            wishlistBtn.classList.add('opacity-80');
+            wishlistBtn.setAttribute('aria-pressed', 'true');
+            showToast("Added to wishlist!");
+          } else if (data.status === 'removed') {
+            if (typeof data.count === 'number') {
+              const el = document.getElementById('wishlist-count');
+              if (el) { el.textContent = String(data.count); el.classList.remove('hidden'); }
+            } else {
+              bumpWishlistCount(-1);
+            }
+            wishlistBtn.textContent = '❤️ Add to Wishlist';
+            wishlistBtn.classList.remove('opacity-80');
+            wishlistBtn.setAttribute('aria-pressed', 'false');
+            showToast("Removed from wishlist");
+          } else if (data.status === 'exists') {
+            // already there: still reflect state in UI
+            wishlistBtn.textContent = '❤️ In Wishlist';
+            wishlistBtn.classList.add('opacity-80');
+            wishlistBtn.setAttribute('aria-pressed', 'true');
+            showToast("Already in wishlist", false);
+          } else {
+            showToast("Could not update wishlist.", false);
+          }
+        })
+        .catch(() => {
+          showToast("An error occurred. Please try again.", false);
+        });
+      });
+    }
   });
 </script>
 {% endblock %}

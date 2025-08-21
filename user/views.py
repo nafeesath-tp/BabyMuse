@@ -106,9 +106,9 @@ def register_otp_verify(request):
             otp_record = EmailOTP.objects.get(email=email)
 
             # Check if OTP is expired
-            if timezone.now() - otp_record.created_at > timedelta(seconds=30):
-                messages.error(request, "OTP expired. Please enter the latest OTP sent to your email.")
-                return redirect('user:verify_signup_otp')  # ✅ Stay on OTP screen
+            if timezone.now() - otp_record.created_at > timedelta(seconds=60):
+                messages.error(request, "OTP expired. Please resend OTP.")
+                  # ✅ Stay on OTP screen
 
             if otp_record.otp == entered_otp:
                 request.session['is_verified'] = True

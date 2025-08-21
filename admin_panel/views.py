@@ -709,15 +709,14 @@ def admin_accept_return_item(request, item_id):
     item.variant.stock += item.quantity
     item.variant.save(update_fields=["stock"])
 
-    # Get all items in the order
+    
     all_items = OrderItem.objects.filter(order=item.order)
     wallet, _ = Wallet.objects.get_or_create(user=item.order.user)
 
-    # Total order info
     total_order_amount = sum(i.price * i.quantity for i in all_items)
     total_paid = item.order.total_paid
 
-    # Calculate total refunded so far (excluding this item)
+    
     refunded_so_far = sum(i.refund_amount for i in all_items if i.id != item.id)
 
     if all(i.is_returned for i in all_items):

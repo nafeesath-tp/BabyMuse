@@ -1,4 +1,4 @@
-{% extends "core/base.html" %}
+{% extends "core/base.html" %} 
 {% block content %}
 <div class="max-w-4xl mx-auto py-10">
   <h1 class="text-2xl font-bold mb-6">📦 My Orders</h1>
@@ -40,10 +40,9 @@
           <div class="mt-4 flex gap-2">
             <a href="{% url 'orders:order_detail' order.id %}"
                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">View Details</a>
-            {% if order.status not in "Cancelled,Delivered,Failed" %}
-              <a href="{% url 'orders:cancel_order' order.id %}"
-                 class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Cancel</a>
-            {% endif %}
+
+            <!-- Removed whole-order Cancel link -->
+
             {% if order.status == 'Delivered' %}
               <a href="{% url 'orders:return_order' order.id %}"
                  class="bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700">Return</a>

@@ -28,7 +28,7 @@
 
     <!-- Timer + Resend -->
     <div class="text-sm text-center mt-4 text-gray-500">
-      <span id="timer">Resend OTP in 30s</span>
+      <span id="timer">Resend OTP </span>
 
       <form method="POST" action="{% url 'user:resend_otp' %}"
             id="resend-form" style="display:none;" class="mt-2">
@@ -41,7 +41,7 @@
 
 <!-- JS for countdown and showing Resend OTP -->
 <script>
-  let countdown = 30;
+  let countdown = 60;
   let timerEl = document.getElementById('timer');
   let resendForm = document.getElementById('resend-form');
 

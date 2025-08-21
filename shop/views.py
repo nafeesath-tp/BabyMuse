@@ -151,14 +151,26 @@ def wishlist_view(request):
 def ajax_add_to_wishlist(request):
     product_id = request.POST.get('product_id')
     variant_id = request.POST.get('variant_id')
+
     product = get_object_or_404(Product, id=product_id)
-    variant = get_object_or_404(ProductVariant, id=variant_id) if variant_id else None
+    variant = None
+    if variant_id:  # only fetch if passed
+        variant = get_object_or_404(ProductVariant, id=variant_id, product=product)
 
+    # Ensure uniqueness per product + variant
     wishlist_item, created = Wishlist.objects.get_or_create(
-        user=request.user, product=product,variant=variant)
-    return JsonResponse({'status': 'added' if created else 'exists'})
+        user=request.user,
+        product=product,
+        variant=variant  # now product+variant pair is unique
+    )
 
+    wishlist_count = Wishlist.objects.filter(user=request.user).count()
 
+    return JsonResponse({
+        "status": "added" if created else "exists",
+        "wishlist_count": wishlist_count,
+        "message": "Added to wishlist!" if created else "Already in wishlist!"
+    })
 @login_required
 @require_POST
 def ajax_remove_from_wishlist(request):
@@ -202,7 +214,6 @@ import json
 @require_POST
 def ajax_add_to_cart(request):
     if not request.user.is_authenticated:
-        print("user is not authenticated")
         return JsonResponse({'status': 'login_required', 'redirect_url': reverse('user:user_login')})
 
     # ✅ Handle JSON body
@@ -220,7 +231,6 @@ def ajax_add_to_cart(request):
     if not product_id:
         return JsonResponse({'status': 'error', 'message': 'Product ID is required'})
 
-    # ✅ Fetch product
     from shop.models import Product, ProductVariant, CartItem, Wishlist
 
     try:
@@ -253,17 +263,29 @@ def ajax_add_to_cart(request):
     )
 
     if not created:
-        if cart_item.quantity < available_stock:
+        if cart_item.quantity < min(available_stock, 3):  # 👈 enforce max 3
             cart_item.quantity += 1
             cart_item.save()
         else:
-            return JsonResponse({'status': 'error', 'message': 'Maximum stock reached in cart.'})
+            return JsonResponse({'status': 'error', 'message': 'Maximum 3 quantity allowed for this product.'})
 
     # ✅ Remove from wishlist
     Wishlist.objects.filter(user=request.user, product=product).delete()
 
-    cart_count = CartItem.objects.filter(user=request.user).count()
-    return JsonResponse({'status': 'success', 'cart_count': cart_count,'message': 'Product added to cart successfully!'})
+    # ✅ Count total quantity, not rows
+    from django.db.models import Sum
+    cart_count = CartItem.objects.filter(user=request.user).aggregate(
+        total=Sum('quantity')
+    )['total'] or 0
+    
+
+    return JsonResponse({
+        'status': 'success',
+        'cart_count': cart_count,
+       
+        'message': 'Product added to cart successfully!'
+    })
+
 
 @login_required
 @require_POST
