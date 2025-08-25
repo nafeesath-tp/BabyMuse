@@ -14,6 +14,7 @@ from django.http import JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.db.models import F
+import platform
 
 
 
@@ -597,7 +598,14 @@ def payment_failure_view(request, order_id):
         order.save(update_fields=["status"])
     return render(request, "orders/payment_failure.html", {"order": order})
 
-pdfmetrics.registerFont(TTFont('Arial', 'C:\\Windows\\Fonts\\arial.ttf'))
+# pdfmetrics.registerFont(TTFont('Arial', 'C:\\Windows\\Fonts\\arial.ttf'))
+if platform.system() == "Windows":
+    font_path = r"C:\Windows\Fonts\arial.ttf"
+else:  # Linux
+    font_path = "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf"
+
+pdfmetrics.registerFont(TTFont('Arial', font_path))
+
 
 @login_required
 def download_invoice_view(request, order_id):
