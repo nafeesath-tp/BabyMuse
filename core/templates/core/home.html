@@ -32,7 +32,7 @@
   <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
     {% for product in products %}
     <div class="bg-white p-4 rounded-xl shadow hover:shadow-lg transition relative group">
-      <img src="{{ product.primary_image }}" class="w-full h-40 object-cover rounded" alt="{{ product.name }}">
+      <img src="{{ product.primary_image.url }}" class="w-full h-40 object-cover rounded" alt="{{ product.name }}">
 
       <h3 class="mt-2 font-medium text-gray-800 truncate">{{ product.name }}</h3>
       <p class="text-sm text-gray-500">{{ product.brand.name }}</p>

@@ -192,7 +192,7 @@ def send_otp(email):
     otp_obj.created_at = timezone.now()  
     otp_obj.save()
 
-    print(f"🔐 OTP for {email} is: {otp_obj.otp}") 
+   
 
    
     send_mail(

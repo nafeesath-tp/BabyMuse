@@ -6,6 +6,7 @@ from django.conf import settings   # For AUTH_USER_MODEL
 from shop.models import ProductVariant
 from user.models import CustomUser
 from django.utils import timezone
+
 # ──────────────── choices ──────────────────────────────────────────────
 ORDER_STATUS = [
     ('Pending',    'Pending'),

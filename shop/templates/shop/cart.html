@@ -159,7 +159,10 @@ function removeFromCart(productId) {
         document.getElementById("total-cart-price").innerText = `₹${parseFloat(data.new_total_price).toFixed(2)}`;
       }
       showToast(data.message);
-    }
+     setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
   })
   .catch(err => console.error(err));
 }

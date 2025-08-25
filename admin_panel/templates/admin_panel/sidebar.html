@@ -1,15 +1,14 @@
 <nav class="p-6">
   <h2 class="text-xl font-bold mb-6 text-pink-600">BabyMuse Admin</h2>
   <ul class="space-y-4">
-    <li><a href="{% url 'admin_panel:admin_dashboard' %}" class="hover:text-pink-500">Dashboard</a></li>
-    <li><a href="{% url 'admin_panel:admin_orders' %}" class="hover:text-pink-500">Orders</a></li>
-    <li><a href="{% url 'admin_panel:admin_products' %}">Products</a></li>
-    <li><a href="{% url 'admin_panel:admin_customer_list' %}">Customers</a></li>
-    <li><a href="{% url 'admin_panel:coupon_list' %}" class="hover:text-pink-500">Coupons</a></li>
-    <li><a href="{% url 'admin_panel:admin_category_list' %}">Categories</a></li>
-    <li><a href="">Refund/Return</a></li>
-    <li><a href="">Banners</a></li>
-    <li><a href="{% url 'admin_panel:sales_report' %}" class="hover:text-pink-500 font-semibold text-blue-600">📊 Sales Report</a></li>
+    <li><a href="{% url 'admin_panel:admin_dashboard' %}" class="hover:text-pink-500 font-semibold text-blue-600">Dashboard</a></li>
+    <li><a href="{% url 'admin_panel:admin_orders' %}" class="hover:text-pink-500 font-semibold text-blue-600">Orders</a></li>
+    <li><a href="{% url 'admin_panel:admin_products' %}" class="hover:text-pink-500 font-semibold text-blue-600">Products</a></li>
+    <li><a href="{% url 'admin_panel:admin_customer_list' %}" class="hover:text-pink-500 font-semibold text-blue-600">Customers</a></li>
+    <li><a href="{% url 'admin_panel:coupon_list' %}" class="hover:text-pink-500 font-semibold text-blue-600">Coupons</a></li>
+    <li><a href="{% url 'admin_panel:admin_category_list' %}"  class="hover:text-pink-500 font-semibold text-blue-600">Categories</a></li>
+
+    <li><a href="{% url 'admin_panel:sales_report' %}" class="hover:text-pink-500 font-semibold text-blue-600">Sales Report</a></li>
     <li><a href="{% url 'admin_panel:custom_admin_logout' %}" class="text-red-600">Sign Out</a></li>
   </ul>
 </nav>

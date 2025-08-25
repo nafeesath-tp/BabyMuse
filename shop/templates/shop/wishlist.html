@@ -10,7 +10,7 @@
     {% for item in wishlist_items %}
     <li class="flex justify-between items-center border p-3">
       <div class="flex gap-4 items-center">
-        <img src="{{ item.product.primary_image }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-md">
+        <img src="{{ item.product.primary_image.url }}" alt="{{ item.product.name }}" class="w-24 h-24 object-cover rounded-md">
         <div>
           <h3 class="font-bold">{{ item.product.name }}</h3>
           <p class="text-sm text-gray-600">Size: {{ item.variant.size }}</p>

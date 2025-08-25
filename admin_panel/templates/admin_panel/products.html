@@ -31,7 +31,7 @@
       {% for product in page_obj %}
       <tr class="border-b">
         <td class="p-2">
-          <img src="{{ product.primary_image }}" class="h-14 w-14 object-cover rounded" />
+          <img src="{{ product.primary_image.url }}" class="h-14 w-14 object-cover rounded" />
         </td>
         <td class="p-2">{{ product.name }}</td>
         <td class="p-2">{{ product.category }}</td>

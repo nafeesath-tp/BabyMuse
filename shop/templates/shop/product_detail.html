@@ -34,16 +34,16 @@
   <div>
     <h1>{{ product.name }}</h1>
 
-{% if product.price %}
-  {% if final_discount|default:0 > 0 %}
+    {% if product.price %}
+    {% if final_discount|default:0 > 0 %}
     <p class="line-through text-gray-500">₹{{ product.price }}</p>
     <p class="text-green-600 font-bold">₹{{ discounted_price }} ({{ final_discount }}% OFF)</p>
-  {% else %}
+    {% else %}
     <p class="font-bold text-pink-600">₹{{ product.price }}</p>
-  {% endif %}
-{% else %}
-  <p class="text-red-500 text-sm mt-2">Price not available</p>
-{% endif %}
+    {% endif %}
+    {% else %}
+    <p class="text-red-500 text-sm mt-2">Price not available</p>
+    {% endif %}
 
     <!-- Rating -->
     <div class="flex items-center gap-2 mb-2">
@@ -63,68 +63,56 @@
 
     <!-- Price + Discount -->
     <div id="price-section">
- {% with first_variant=variants.0 %}
-  {% if first_variant %}
-    <div class="text-2xl text-pink-600 font-semibold">
-      <span id="display-price">
-        ₹{{ discounted_price }}
-      </span>
-    </div>
-  {% else %}
-    <p class="text-red-500 text-sm mt-2">Price not available</p>
-  {% endif %}
-{% endwith %}
+      {% with first_variant=variants.0 %}
+      {% if first_variant %}
+      <div class="text-2xl text-pink-600 font-semibold">
+        <span id="display-price">
+          ₹{{ discounted_price }}
+        </span>
+      </div>
+      {% else %}
+      <p class="text-red-500 text-sm mt-2">Price not available</p>
+      {% endif %}
+      {% endwith %}
     </div>
 
     <!-- Size Variants -->
-{% if variants %}
-<div class="mt-4 mb-4">
-  <h3 class="text-lg font-medium mb-3 text-gray-800">Available Sizes:</h3>
-  <div class="flex flex-wrap gap-2">
-    {% for variant in variants %}
-    <label class="cursor-pointer">
-      <input 
-        type="radio" 
-        name="size_variant" 
-        value="{{ variant.id }}" 
-        class="hidden size-variant-radio" 
-        data-price="{{ variant.price }}"
-        data-stock="{{ variant.stock }}"
-        data-size="{{ variant.size }}"
-        {% if forloop.first %}checked{% endif %}
-        {% if variant.stock <= 0 %}disabled{% endif %}
-      >
-      <span class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium
+    {% if variants %}
+    <div class="mt-4 mb-4">
+      <h3 class="text-lg font-medium mb-3 text-gray-800">Available Sizes:</h3>
+      <div class="flex flex-wrap gap-2">
+        {% for variant in variants %}
+        <label class="cursor-pointer">
+          <input type="radio" name="size_variant" value="{{ variant.id }}" class="hidden size-variant-radio"
+            data-price="{{ variant.price }}" data-stock="{{ variant.stock }}" data-size="{{ variant.size }}" 
+          {% if forloop.first %}checked{% endif %}{% if variant.stock <= 0 %}disabled{% endif %}>
+          <span class="inline-block px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium
                     hover:border-pink-500 hover:bg-pink-50 transition-colors
                     variant-option {% if variant.stock <= 0 %}opacity-50 cursor-not-allowed{% endif %}"
-            data-variant-id="{{ variant.id }}" 
-            data-stock="{{ variant.stock }}">
-        {{ variant.size }}
-        {% if variant.stock <= 0 %}
-          <span class="text-xs text-red-500 block">Out of Stock</span>
-        {% elif variant.stock <= 10 %}
-          <span class="text-xs text-orange-500 block">Only {{ variant.stock }} left</span>
-        {% endif %}
-      </span>
-    </label>
-    {% endfor %}
-  </div>
+            data-variant-id="{{ variant.id }}" data-stock="{{ variant.stock }}">
+            {{ variant.size }}
+            {% if variant.stock <= 0 %} <span class="text-xs text-red-500 block">Out of Stock</span>
+          {% elif variant.stock <= 10 %} <span class="text-xs text-orange-500 block">Only {{ variant.stock }}
+            left</span>
+            {% endif %}
+            </span>
+        </label>
+        {% endfor %}
+      </div>
 
-  <!-- Selected variant info -->
-  <div id="selected-variant-info" class="mt-2 text-sm text-gray-600">
-    Selected: <span id="selected-variant-name">{{ variants.0.size }}</span>
-    <span id="selected-variant-stock" class="ml-2">
-      {% if variants.0.stock <= 0 %}
-        (<span class="text-red-500">Out of Stock</span>)
-      {% elif variants.0.stock <= 10 %}
-        (<span class="text-orange-500">Only {{ variants.0.stock }} left</span>)
-      {% else %}
-        (In Stock)
-      {% endif %}
-    </span>
-  </div>
-</div>
-{% endif %}
+      <!-- Selected variant info -->
+      <div id="selected-variant-info" class="mt-2 text-sm text-gray-600">
+        Selected: <span id="selected-variant-name">{{ variants.0.size }}</span>
+        <span id="selected-variant-stock" class="ml-2">
+          {% if variants.0.stock <= 0 %} (<span class="text-red-500">Out of Stock</span>)
+        {% elif variants.0.stock <= 10 %} (<span class="text-orange-500">Only {{ variants.0.stock }} left</span>)
+          {% else %}
+          (In Stock)
+          {% endif %}
+          </span>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Stock Status Alert -->
     <div id="stock-alert" class="mt-4 mb-4 hidden">
@@ -145,7 +133,8 @@
 
     <!-- Action Buttons -->
     <div class="flex gap-4 mt-6">
-      <button id="add-to-cart-btn" class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+      <button id="add-to-cart-btn"
+        class="bg-green-600 text-white px-5 py-2 rounded hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
         data-product-id="{{ product.id }}">🛒 Add to Cart</button>
 
       <button id="add-to-wishlist-btn" class="bg-pink-500 text-white px-5 py-2 rounded hover:bg-pink-600 transition"
@@ -168,13 +157,13 @@
   <div class="flex items-center gap-2 mb-4">
     <div>
       {% for i in "12345" %}
-        {% if avg_rating >= forloop.counter %}
-          ⭐
-        {% elif avg_rating >= forloop.counter0|add:"0.5" %}
-          ⭐
-        {% else %}
-          ☆
-        {% endif %}
+      {% if avg_rating >= forloop.counter %}
+      ⭐
+      {% elif avg_rating >= forloop.counter0|add:"0.5" %}
+      ⭐
+      {% else %}
+      ☆
+      {% endif %}
       {% endfor %}
     </div>
     <span class="text-gray-600 text-sm">
@@ -185,95 +174,95 @@
   <!-- Existing Reviews -->
   <div id="reviews-list" class="space-y-4 mb-6">
     {% for review in reviews %}
-      <div class="border rounded p-3">
-        <div class="flex justify-between items-center mb-1">
-          <strong>{{ review.user.email }}</strong>
-          <span class="text-yellow-500">
-            {% for i in "12345" %}
-              {% if review.rating >= forloop.counter %}
-                ⭐
-              {% else %}
-                ☆
-              {% endif %}
-            {% endfor %}
-          </span>
-        </div>
-        <p class="text-gray-700">{{ review.comment }}</p>
-        <small class="text-gray-500">{{ review.created_at|date:"M d, Y H:i" }}</small>
+    <div class="border rounded p-3">
+      <div class="flex justify-between items-center mb-1">
+        <strong>{{ review.user.email }}</strong>
+        <span class="text-yellow-500">
+          {% for i in "12345" %}
+          {% if review.rating >= forloop.counter %}
+          ⭐
+          {% else %}
+          ☆
+          {% endif %}
+          {% endfor %}
+        </span>
       </div>
+      <p class="text-gray-700">{{ review.comment }}</p>
+      <small class="text-gray-500">{{ review.created_at|date:"M d, Y H:i" }}</small>
+    </div>
     {% empty %}
-      <p class="text-gray-500">No reviews yet. Be the first to review!</p>
+    <p class="text-gray-500">No reviews yet. Be the first to review!</p>
     {% endfor %}
   </div>
 
   <!-- Review Form with Hoverable Star Rating -->
   {% if user.is_authenticated %}
-    <h3 class="text-lg font-medium mb-2">Write a Review</h3>
-    <form method="post">
-      {% csrf_token %}
-      
-      <!-- Star Rating -->
-      <div class="flex items-center gap-2 mb-2">
-        <label class="text-gray-700">Rating:</label>
-        <div id="star-rating" class="flex gap-1 cursor-pointer">
-          {% for i in "12345" %}
-            <span class="star text-gray-400 text-xl" data-value="{{ forloop.counter }}">☆</span>
-          {% endfor %}
-        </div>
-        {{ review_form.rating.as_hidden }}
+  <h3 class="text-lg font-medium mb-2">Write a Review</h3>
+  <form method="post" action="{% url 'shop:submit_review' product.id %}">
+    {% csrf_token %}
+
+    <!-- Star Rating -->
+    <div class="flex items-center gap-2 mb-2">
+      <label class="text-gray-700">Rating:</label>
+      <div id="star-rating" class="flex gap-1 cursor-pointer">
+        {% for i in "12345" %}
+        <span class="star text-gray-400 text-xl" data-value="{{ forloop.counter }}">☆</span>
+        {% endfor %}
       </div>
-      
-      <!-- Comment -->
-      <div class="mb-2">
-        {{ review_form.comment }}
-      </div>
-      
-      <button type="submit" class="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 transition">
-        Submit Review
-      </button>
-    </form>
+      {{ review_form.rating.as_hidden }}
+    </div>
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        const stars = document.querySelectorAll("#star-rating .star");
-        const ratingInput = document.getElementById("id_rating");
-        let currentRating = 0;
+    <!-- Comment -->
+    <div class="mb-2">
+      {{ review_form.comment }}
+    </div>
 
-        stars.forEach((star) => {
-          star.addEventListener("mouseover", function() {
-            const value = parseInt(this.dataset.value);
-            stars.forEach((s, i) => {
-              s.textContent = i < value ? "⭐" : "☆";
-              s.classList.toggle("text-yellow-500", i < value);
-              s.classList.toggle("text-gray-400", i >= value);
-            });
+    <button type="submit" class="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 transition">
+      Submit Review
+    </button>
+  </form>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const stars = document.querySelectorAll("#star-rating .star");
+      const ratingInput = document.getElementById("id_rating");
+      let currentRating = 0;
+
+      stars.forEach((star) => {
+        star.addEventListener("mouseover", function () {
+          const value = parseInt(this.dataset.value);
+          stars.forEach((s, i) => {
+            s.textContent = i < value ? "⭐" : "☆";
+            s.classList.toggle("text-yellow-500", i < value);
+            s.classList.toggle("text-gray-400", i >= value);
           });
+        });
 
-          star.addEventListener("mouseout", function() {
-            stars.forEach((s, i) => {
-              s.textContent = i < currentRating ? "⭐" : "☆";
-              s.classList.toggle("text-yellow-500", i < currentRating);
-              s.classList.toggle("text-gray-400", i >= currentRating);
-            });
+        star.addEventListener("mouseout", function () {
+          stars.forEach((s, i) => {
+            s.textContent = i < currentRating ? "⭐" : "☆";
+            s.classList.toggle("text-yellow-500", i < currentRating);
+            s.classList.toggle("text-gray-400", i >= currentRating);
           });
+        });
 
-          star.addEventListener("click", function() {
-            currentRating = parseInt(this.dataset.value);
-            ratingInput.value = currentRating;
+        star.addEventListener("click", function () {
+          currentRating = parseInt(this.dataset.value);
+          ratingInput.value = currentRating;
 
-            stars.forEach((s, i) => {
-              s.textContent = i < currentRating ? "⭐" : "☆";
-              s.classList.toggle("text-yellow-500", i < currentRating);
-              s.classList.toggle("text-gray-400", i >= currentRating);
-            });
+          stars.forEach((s, i) => {
+            s.textContent = i < currentRating ? "⭐" : "☆";
+            s.classList.toggle("text-yellow-500", i < currentRating);
+            s.classList.toggle("text-gray-400", i >= currentRating);
           });
         });
       });
-    </script>
+    });
+  </script>
   {% else %}
-    <p class="text-gray-600 mt-2">
-      <a href="{% url 'user:user_login' %}" class="text-pink-600 hover:underline">Login</a> to write a review.
-    </p>
+  <p class="text-gray-600 mt-2">
+    <a href="{% url 'user:user_login' %}" class="text-pink-600 hover:underline">Login</a> to write a review.
+  </p>
   {% endif %}
 </div>
 
@@ -385,14 +374,14 @@
     if (variantRadios.length > 0) {
       const firstVariant = variantRadios[0];
       const firstOption = variantOptions[0];
-      
+
       firstOption.classList.remove('border-gray-300');
       firstOption.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
-      
+
       // FIX: use dataset.size (you set data-size on radios)
       updateStockStatus(parseInt(firstVariant.dataset.stock), firstVariant.dataset.size);
       updatePrice(firstVariant);
-      
+
       if (selectedVariantStock) {
         const stock = parseInt(firstVariant.dataset.stock);
         if (stock <= 0) {
@@ -407,7 +396,7 @@
 
     // Handle variant option clicks
     variantOptions.forEach((option, index) => {
-      option.addEventListener('click', function() {
+      option.addEventListener('click', function () {
         const stock = parseInt(this.dataset.stock);
         if (stock <= 0) {
           showToast("This size is out of stock!", false);
@@ -418,18 +407,18 @@
           opt.classList.remove('border-pink-500', 'bg-pink-50', 'text-pink-700');
           opt.classList.add('border-gray-300');
         });
-        
+
         this.classList.remove('border-gray-300');
         this.classList.add('border-pink-500', 'bg-pink-50', 'text-pink-700');
-        
+
         const radio = variantRadios[index];
         radio.checked = true;
-        
+
         if (selectedVariantName) {
           // FIX: use dataset.size
           selectedVariantName.textContent = radio.dataset.size;
         }
-        
+
         if (selectedVariantStock) {
           if (stock <= 0) {
             selectedVariantStock.innerHTML = '<span class="text-red-500">(Out of Stock)</span>';
@@ -439,7 +428,7 @@
             selectedVariantStock.innerHTML = '<span class="text-green-500">(In Stock)</span>';
           }
         }
-        
+
         // FIX: use dataset.size
         updateStockStatus(stock, radio.dataset.size);
         updatePrice(radio);
@@ -456,7 +445,7 @@
 
         const productId = this.dataset.productId;
         const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
-        
+
         if (selectedVariant) {
           const stock = parseInt(selectedVariant.dataset.stock);
           if (stock <= 0) {
@@ -464,12 +453,12 @@
             return;
           }
         }
-        
+
         let body = `product_id=${encodeURIComponent(productId)}`;
         if (selectedVariant) {
           body += `&variant_id=${encodeURIComponent(selectedVariant.value)}`;
         }
-        
+
         fetch("{% url 'shop:ajax_add_to_cart' %}", {
           method: "POST",
           headers: {
@@ -480,23 +469,26 @@
           credentials: "same-origin",
           body
         })
-        .then(res => res.json())
-        .then(data => {
-          if (!data) return;
+          .then(res => res.json())
+          .then(data => {
+            if (!data) return;
 
-          if (data.status === "login_required" && data.redirect_url){
-            window.location.href = data.redirect_url + '?next=' + window.location.pathname;
-            return;
-          }
-          if (data.status === "success"){
-            showToast(data.message);
-          } else if (data.status === "error"){
-            showToast(data.message || "Add to cart has been failed.", false);
-          }
-        })
-        .catch(() => {
-          showToast("An error occurred. Please try again.", false);
-        });
+            if (data.status === "login_required" && data.redirect_url) {
+              window.location.href = data.redirect_url + '?next=' + window.location.pathname;
+              return;
+            }
+            if (data.status === "success") {
+              showToast(data.message);
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            } else if (data.status === "error") {
+              showToast(data.message || "Add to cart has been failed.", false);
+            }
+          })
+          .catch(() => {
+            showToast("An error occurred. Please try again.", false);
+          });
       });
     }
 
@@ -505,12 +497,12 @@
       wishlistBtn.addEventListener("click", function () {
         const productId = this.dataset.productId;
         const selectedVariant = document.querySelector('input[name="size_variant"]:checked');
-        
+
         let body = `product_id=${encodeURIComponent(productId)}`;
         if (selectedVariant) {
           body += `&variant_id=${encodeURIComponent(selectedVariant.value)}`;
         }
-        
+
         fetch("{% url 'shop:ajax_add_to_wishlist' %}", {
           method: "POST",
           headers: {
@@ -521,65 +513,65 @@
           credentials: "same-origin",
           body
         })
-        .then(async (res) => {
-          // If server redirected (e.g., to login), go there
-          if (res.redirected) {
-            window.location.href = res.url;
-            return null;
-          }
-          // Handle 401/403 (not logged in)
-          if (res.status === 401 || res.status === 403) {
-            window.location.href = "{% url 'user:user_login' %}" + '?next=' + window.location.pathname;
-            return null;
-          }
-          // Try to parse JSON
-          try {
-            return await res.json();
-          } catch {
-            return null;
-          }
-        })
-        .then((data) => {
-          if (!data) return;
+          .then(async (res) => {
+            // If server redirected (e.g., to login), go there
+            if (res.redirected) {
+              window.location.href = res.url;
+              return null;
+            }
+            // Handle 401/403 (not logged in)
+            if (res.status === 401 || res.status === 403) {
+              window.location.href = "{% url 'user:user_login' %}" + '?next=' + window.location.pathname;
+              return null;
+            }
+            // Try to parse JSON
+            try {
+              return await res.json();
+            } catch {
+              return null;
+            }
+          })
+          .then((data) => {
+            if (!data) return;
 
-          // Expecting: {status: 'added' | 'exists' | 'removed', count: <optional new count> }
-          if (data.status === 'added') {
-            // update count if provided, else +1
-            if (typeof data.count === 'number') {
-              const el = document.getElementById('wishlist-count');
-              if (el) { el.textContent = String(data.count); el.classList.remove('hidden'); }
+            // Expecting: {status: 'added' | 'exists' | 'removed', count: <optional new count> }
+            if (data.status === 'added') {
+              // update count if provided, else +1
+              if (typeof data.count === 'number') {
+                const el = document.getElementById('wishlist-count');
+                if (el) { el.textContent = String(data.count); el.classList.remove('hidden'); }
+              } else {
+                bumpWishlistCount(1);
+              }
+              // update button instantly
+              wishlistBtn.textContent = '❤️ In Wishlist';
+              wishlistBtn.classList.add('opacity-80');
+              wishlistBtn.setAttribute('aria-pressed', 'true');
+              showToast("Added to wishlist!");
+            } else if (data.status === 'removed') {
+              if (typeof data.count === 'number') {
+                const el = document.getElementById('wishlist-count');
+                if (el) { el.textContent = String(data.count); el.classList.remove('hidden'); }
+              } else {
+                bumpWishlistCount(-1);
+              }
+              wishlistBtn.textContent = '❤️ Add to Wishlist';
+              wishlistBtn.classList.remove('opacity-80');
+              wishlistBtn.setAttribute('aria-pressed', 'false');
+              showToast("Removed from wishlist");
+            } else if (data.status === 'exists') {
+              // already there: still reflect state in UI
+              wishlistBtn.textContent = '❤️ In Wishlist';
+              wishlistBtn.classList.add('opacity-80');
+              wishlistBtn.setAttribute('aria-pressed', 'true');
+              showToast("Already in wishlist", false);
             } else {
-              bumpWishlistCount(1);
+              showToast("Could not update wishlist.", false);
             }
-            // update button instantly
-            wishlistBtn.textContent = '❤️ In Wishlist';
-            wishlistBtn.classList.add('opacity-80');
-            wishlistBtn.setAttribute('aria-pressed', 'true');
-            showToast("Added to wishlist!");
-          } else if (data.status === 'removed') {
-            if (typeof data.count === 'number') {
-              const el = document.getElementById('wishlist-count');
-              if (el) { el.textContent = String(data.count); el.classList.remove('hidden'); }
-            } else {
-              bumpWishlistCount(-1);
-            }
-            wishlistBtn.textContent = '❤️ Add to Wishlist';
-            wishlistBtn.classList.remove('opacity-80');
-            wishlistBtn.setAttribute('aria-pressed', 'false');
-            showToast("Removed from wishlist");
-          } else if (data.status === 'exists') {
-            // already there: still reflect state in UI
-            wishlistBtn.textContent = '❤️ In Wishlist';
-            wishlistBtn.classList.add('opacity-80');
-            wishlistBtn.setAttribute('aria-pressed', 'true');
-            showToast("Already in wishlist", false);
-          } else {
-            showToast("Could not update wishlist.", false);
-          }
-        })
-        .catch(() => {
-          showToast("An error occurred. Please try again.", false);
-        });
+          })
+          .catch(() => {
+            showToast("An error occurred. Please try again.", false);
+          });
       });
     }
   });

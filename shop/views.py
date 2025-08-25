@@ -13,6 +13,7 @@ from django.conf import settings
 
 from .models import Product, Category, Wishlist, CartItem, ProductReview, ProductVariant,ProductOffer
 from django.urls import reverse
+from orders.models import OrderItem
 
 
 
@@ -56,7 +57,7 @@ def shop_view(request):
     paginator = Paginator(products, 9)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
+    
     context = {
         'page_obj': page_obj,
         'search_query': search_query,
@@ -95,7 +96,7 @@ def product_detail(request, pk):
 
         # Determine if we should show size selection
         name = product.name.strip().lower()
-        show_size = any(x in name for x in ['disposible diaper', 'ethnicwear', 'frocks'])
+        show_size = any(x in name for x in ['daipering', 'ethnicwear', 'frocks'])
 
         best_discount = max(
             product.category.discount_percent if product.category else 0,
@@ -117,7 +118,7 @@ def product_detail(request, pk):
 
         else:
             review_form = ProductReviewForm()
-
+        
         context = {
             'product': product,
             'images': product.images.all(),
@@ -303,7 +304,7 @@ def ajax_remove_from_cart(request):
 @require_POST
 @login_required
 def update_cart_quantity(request, product_id):
-    print(product_id)
+
     try:
         quantity = int(request.POST.get('quantity', 1))
         if quantity < 1:
@@ -356,3 +357,34 @@ def ajax_cart_data(request):
         })
 
     return JsonResponse({"status": "success", "items": data, "total_price": total_price})
+@login_required
+def submit_review(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+
+    # ✅ Ensure user ordered this product and it was delivered
+    has_delivered_order = OrderItem.objects.filter(
+        order__user=request.user,
+        product=product
+    ).exists()
+
+    if not has_delivered_order:
+        messages.error(request, "You can only review products that have been delivered to you.")
+        return redirect("shop:product_detail", pk=product.id)
+
+    if request.method == "POST":
+        rating = request.POST.get("rating")
+        comment = request.POST.get("comment")
+
+        # ✅ Prevent duplicate review
+        if ProductReview.objects.filter(user=request.user, product=product).exists():
+            messages.warning(request, "You have already reviewed this product.")
+        else:
+            ProductReview.objects.create(
+                product=product,
+                user=request.user,
+                rating=rating,
+                comment=comment
+            )
+            messages.success(request, "Thank you for your review!")
+
+    return redirect("shop:product_detail", pk=product.id)

@@ -1,69 +1,65 @@
-from shop.models import Product, Category, ProductImage
-from orders.models import Order,OrderItem
-from .models import AdminUser
-from datetime import datetime,timezone
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.contrib.auth.hashers import check_password, make_password
-from django.core.mail import send_mail
-from django.conf import settings
-from django.core.paginator import Paginator
-from django.http import HttpResponse
-from django.db.models import Sum, Q, OuterRef, Subquery
-from django.contrib.auth import get_user_model
-from .forms import ProductForm
-from shop.forms import CategoryForm
-from .decorators import admin_login_required
-from io import BytesIO
-from django.core.files.base import ContentFile
-from PIL import Image
-from django.contrib.auth.models import User
-import random
-import string
 import csv
-from django.core.exceptions import ObjectDoesNotExist
-from django.views.decorators.http import require_POST
+import io
 import logging
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from .forms import ProductForm
-from shop.models import Product, ProductImage, Category
-from .forms import ProductForm, ProductVariantFormSet,ProductVariant
+import pandas as pd
+import pytz
+import random
+import re
+import string
 
 from decimal import Decimal
-from datetime import datetime, timezone as dt_timezone
-from django.utils import timezone as dj_timezone
-
-
+from datetime import datetime, timedelta,timezone as dt_timezone
+from io import BytesIO
 from PIL import Image, UnidentifiedImageError
+from datetime import timezone
 
-
-
-from shop.models import ProductOffer
-
-from orders.models import Coupon
-import re
-
-import pytz
-from user.models import Wallet
-from django.db.models import Sum, Count
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.files.base import ContentFile
+from django.core.mail import send_mail
+from django.core.paginator import Paginator
+from django.db.models import Sum, Q, OuterRef, Subquery, Count
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear
-import logging
+from django.http import HttpResponse, HttpResponseForbidden
+from django.shortcuts import render, redirect, get_object_or_404
+
+from django.utils import timezone as dj_timezone
+from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_POST
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+
+from shop.models import Product, Category, ProductImage, ProductOffer
+from shop.forms import CategoryForm
+from orders.models import Order, OrderItem, Coupon
+from user.models import Wallet
+from .decorators import admin_login_required
+from .forms import ProductForm, ProductVariantFormSet, ProductVariant
+from .models import AdminUser
 
 
 
-
+logger = logging.getLogger(__name__)
 IST = pytz.timezone("Asia/Kolkata") 
 User = get_user_model()
 
-# Create default admin user
 if not AdminUser.objects.filter(username='admin123').exists():
-    admin = AdminUser(username='admin123', password=make_password(
-        'admin123'), email='tpnafeesath90@gmail.com')
+    admin = AdminUser(
+        username='admin123',
+        password=make_password('admin123'),
+        email='tpnafeesath90@gmail.com'
+    )
     admin.save()
-    print("Admin user created.")
-else:
-    print("Admin user already exists.")
+
+
 
 
 def custom_admin_login(request):
@@ -111,14 +107,6 @@ def admin_forgot_password(request):
             messages.error(request, "Email not found.")
     return render(request, 'admin_panel/forgot_password.html')
 
-
-
-
-
-
-
-
-logger = logging.getLogger(__name__)
 
 @admin_login_required
 def admin_dashboard(request):
@@ -369,11 +357,6 @@ def admin_add_product(request):
 
 
 
-
-
-
-
-
 @admin_login_required
 def admin_edit_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
@@ -507,14 +490,12 @@ def toggle_variant_list(request, variant_id):
 
 # category Management
 
-
 @admin_login_required
 def category_list(request):
     categories = Category.objects.all()
     paginator = Paginator(categories, 10)
     page_obj = paginator.get_page(request.GET.get('page'))
     return render(request, 'admin_panel/category_list.html', {'page_obj': page_obj})
-
 
 @admin_login_required
 def add_category(request):
@@ -556,7 +537,6 @@ def delete_category(request, category_id):
     return redirect('admin_panel:admin_category_list')
 
 # customer management
-
 
 @admin_login_required
 def admin_customer_list(request):
@@ -614,8 +594,6 @@ def toggle_category_status(request, category_id):
     return redirect('admin_panel:admin_category_list')
 
 # order management
-
-
 @admin_login_required
 def admin_orders(request):
     query = request.GET.get('q', '')
@@ -779,13 +757,13 @@ def add_coupon(request):
         end_date = request.POST.get('end_date')
         usage_limit = request.POST.get('usage_limit')
 
-        
+        # ✅ Check if coupon already exists
         if Coupon.objects.filter(code=code).exists():
             messages.error(request, "Coupon code already exists.")
             return redirect('admin_panel:add_coupon')
 
+        # ✅ Validate dates
         try:
-           
             start_dt = datetime.fromisoformat(start_date).replace(tzinfo=dt_timezone.utc)
             end_dt = datetime.fromisoformat(end_date).replace(tzinfo=dt_timezone.utc)
         except ValueError:
@@ -796,6 +774,27 @@ def add_coupon(request):
             messages.error(request, "Start date cannot be after end date.")
             return redirect('admin_panel:add_coupon')
 
+        # ✅ Validation depending on discount type
+        if discount_type == "percent":
+            if discount_value <= 0 or discount_value > 100:
+                messages.error(request, "Percentage discount must be between 1% and 100%.")
+                return redirect('admin_panel:add_coupon')
+
+        elif discount_type == "amount":
+            if min_order_amount > 0:
+                max_allowed = (min_order_amount * Decimal("0.10"))  # business rule
+                if discount_value > max_allowed:
+                    messages.error(
+                        request,
+                        f"Flat discount cannot exceed 10% of minimum order amount (₹{max_allowed})."
+                    )
+                    return redirect('admin_panel:add_coupon')
+
+        else:
+            messages.error(request, "Invalid discount type selected.")
+            return redirect('admin_panel:add_coupon')
+
+        # ✅ Create coupon
         Coupon.objects.create(
             code=code,
             discount_type=discount_type,
@@ -862,20 +861,6 @@ def delete_coupon(request, coupon_id):
     else:
         messages.error(request, "Coupon does not exist or was already deleted.")
     return redirect('admin_panel:coupon_list')
-from django.shortcuts import render
-
-from django.utils.timezone import now
-from django.http import HttpResponse
-from datetime import datetime, timedelta
-import pandas as pd
-from orders.models import Order
-from django.utils.dateparse import parse_date
-from decimal import Decimal
-import io
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
 
 
 @admin_login_required
@@ -887,7 +872,7 @@ def sales_report_view(request):
     start_date = parse_date(start_date) if start_date else None
     end_date = parse_date(end_date) if end_date else None
 
-    today = now().date()
+    today = datetime.now().date()
     if filter_type == 'daily':
         start_date = end_date = today
     elif filter_type == 'weekly':
@@ -972,7 +957,7 @@ def download_sales_report_excel(request):
     end_date = parse_date(request.GET.get('end_date'))
     filter_type = request.GET.get('filter_type', 'custom')
 
-    today = now().date()
+    today =datetime.now().date()
     if filter_type == 'daily':
         start_date = end_date = today
     elif filter_type == 'weekly':
@@ -1036,7 +1021,7 @@ def download_sales_report_pdf(request):
     end_date = parse_date(request.GET.get('end_date'))
     filter_type = request.GET.get('filter_type', 'custom')
 
-    today = now().date()
+    today = datetime.now().date()
     if filter_type == 'daily':
         start_date = end_date = today
     elif filter_type == 'weekly':

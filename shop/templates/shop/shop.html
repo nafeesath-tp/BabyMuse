@@ -48,7 +48,7 @@
       {% for product in page_obj %}
       <div class="relative bg-white shadow rounded-lg overflow-hidden">
         <a href="{% url 'shop:product_detail' product.id %}">
-          <img src="{{ product.primary_image }}" alt="{{ product.name }}"
+          <img src="{{ product.primary_image.url }}" alt="{{ product.name }}"
             class="w-full h-60 object-cover object-center rounded-md transition-transform duration-300 hover:scale-105">
 
           {% if not product.has_stock %}

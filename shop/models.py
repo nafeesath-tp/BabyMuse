@@ -65,7 +65,7 @@ class Product(models.Model):
     @property
     def primary_image(self):
         first_image = self.images.first()
-        return first_image.image.url if first_image else '/static/images/default-img.jpg'
+        return first_image.image if first_image else '/static/images/default-img.jpg'
 
     @property
     def discounted_price(self):

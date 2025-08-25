@@ -52,8 +52,8 @@ client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_S
 def my_orders_view(request: HttpRequest):
     orders = Order.objects.all()
     qs = Order.objects.filter(user=request.user)
-    print(qs)
-    print(f"all orders: {orders}")
+
+  
     q  = request.GET.get("q", "").strip().upper()
     if q:
         qs = qs.filter(order_id__icontains=q)
@@ -114,9 +114,20 @@ def cancel_order_item_view(request, item_id):
             # ✅ Refund if applicable
             if item.order.payment and item.order.payment.method in ["Razorpay", "Wallet"]:
                 wallet, _ = Wallet.objects.get_or_create(user=request.user)
-                wallet.credit(item.price * item.quantity, source=f"Cancelled item '{item.product.name}' from Order #{item.order.order_id}")
+                wallet.credit(
+                    item.price * item.quantity,
+                    source=f"Cancelled item '{item.product.name}' from Order #{item.order.order_id}"
+                )
 
-        messages.success(request, f"'{item.product.name}' cancelled ✔️ Refund credited to wallet if applicable.")
+            # ✅ Update order status
+            order = item.order
+            if all(i.is_cancelled or i.is_returned for i in order.items.all()):
+                order.status = "Cancelled"
+            else:
+                order.status = "Processing"
+            order.save(update_fields=["status"])
+
+        messages.success(request, f"'{item.product.name}' cancelled ✔️ Refund credited to wallet")
         return redirect("orders:order_detail", order_id=item.order.id)
 
     return render(request, "orders/order_item_cancel_confirm.html", {"item": item})
@@ -239,6 +250,7 @@ def checkout_view(request):
     final_total_after_discount = final_total - discount_amount
 
     # ✅ Razorpay order creation
+  
     client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
     razorpay_order = client.order.create({
         "amount": int(final_total_after_discount * 100),
@@ -340,7 +352,11 @@ def checkout_view(request):
             try:
                 wallet = Wallet.objects.get(user=user)
 
-                if wallet.balance < final_total_after_discount:
+                # if wallet.balance < final_total_after_discount:
+                #     messages.error(request, "Insufficient Wallet Balance!")
+                #     return redirect("orders:checkout")
+
+                if final_total_after_discount > 0 and wallet.balance < final_total_after_discount:
                     messages.error(request, "Insufficient Wallet Balance!")
                     return redirect("orders:checkout")
 
@@ -405,7 +421,7 @@ def checkout_view(request):
         "total_discount": total_discount,
         "addresses": addresses,
         "default_address": default_address,
-        "razorpay_order_id": razorpay_order["id"],
+        "razorpay_order_id": razorpay_order["id"] ,
         "razorpay_key_id": settings.RAZORPAY_KEY_ID,
         "final_total_after_discount": final_total_after_discount,
         "applied_coupon": applied_coupon,
@@ -488,7 +504,6 @@ def razorpay_success(request):
         except razorpay.errors.SignatureVerificationError:
             return JsonResponse({"error": "Payment signature verification failed."}, status=400)
         except Exception as e:
-            print("Payment Error:", str(e))
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request."}, status=400)
