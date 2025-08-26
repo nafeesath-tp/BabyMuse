@@ -23,10 +23,10 @@ AUTH_USER_MODEL = 'user.CustomUser'
 
 # Secret key and debug
 SECRET_KEY = config("SECRET_KEY")
-DEBUG =True
+DEBUG =False
 
 # Allowed hosts
-ALLOWED_HOSTS = [host.strip() for host in config("ALLOWED_HOSTS").split(",")]
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 # Logging
 logging.basicConfig(level=logging.DEBUG)
