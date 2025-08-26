@@ -23,7 +23,7 @@ AUTH_USER_MODEL = 'user.CustomUser'
 
 # Secret key and debug
 SECRET_KEY = config("SECRET_KEY")
-DEBUG =False
+DEBUG =True
 
 # Allowed hosts
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
