@@ -27,6 +27,9 @@ from django.db.models import Sum, Q, OuterRef, Subquery, Count
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncYear
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
+
 
 from django.utils import timezone as dj_timezone
 from django.utils.dateparse import parse_date
