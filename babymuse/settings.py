@@ -23,10 +23,10 @@ AUTH_USER_MODEL = 'user.CustomUser'
 
 # Secret key and debug
 SECRET_KEY = config("SECRET_KEY")
-DEBUG =True
+DEBUG =False
 
 # Allowed hosts
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['16.170.233.137', 'babymuse.ddns.net', 'localhost']
 
 # Logging
 logging.basicConfig(level=logging.DEBUG)
@@ -40,8 +40,6 @@ INSTALLED_APPS = [
     'shop',
     'orders',
     'core',
-    'cloudinary',
-    'cloudinary_storage',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -51,9 +49,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'social_django',
 ]
-
-# DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-# STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # ---------------------------------------
 # 4️⃣ Middleware
