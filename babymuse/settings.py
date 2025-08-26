@@ -26,7 +26,7 @@ SECRET_KEY = config("SECRET_KEY")
 DEBUG =True
 
 # Allowed hosts
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [host.strip() for host in config("ALLOWED_HOSTS").split(",")]
 
 # Logging
 logging.basicConfig(level=logging.DEBUG)
@@ -52,17 +52,8 @@ INSTALLED_APPS = [
     'social_django',
 ]
 
-# ---------------------------------------
-# 3️⃣ Cloudinary config
-# ---------------------------------------
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config("CLOUD_NAME"),
-    'API_KEY': config("API_KEY"),
-    'API_SECRET': config("API_SECRET"),
-}
-
 # DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+# STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # ---------------------------------------
 # 4️⃣ Middleware
