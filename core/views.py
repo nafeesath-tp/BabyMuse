@@ -50,3 +50,6 @@ def about(request):
 
 def contact(request):
     return render(request, 'core/contact.html')
+
+def custom404(request,exception):
+    return render(request, "core/404.html", status=404)
