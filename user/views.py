@@ -127,7 +127,7 @@ import re
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.contrib.auth import login
-from django.contrib.auth.models import User
+
 
 def create_account(request):
     email = request.session.get('email')
@@ -151,8 +151,8 @@ def create_account(request):
         if len(username) < 4 or len(username) > 20:
             messages.error(request, "Username must be 4-20 characters long.")
             return redirect('user:create_account')
-        if not re.match(r'^[A-Za-z0-9_]+$', username):
-            messages.error(request, "Username can only contain letters, numbers, and underscores.")
+        if not re.match(r'^[A-Za-z][A-Za-z0-9_-]*$', username):
+            messages.error(request, "Username must start with a letter and can contain letters, numbers, '-' or '_'.")
             return redirect('user:create_account')
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken.")
