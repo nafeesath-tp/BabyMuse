@@ -123,6 +123,12 @@ def register_otp_verify(request):
     return render(request, 'user/verify_signupotp.html')
 
 
+import re
+from django.contrib import messages
+from django.shortcuts import redirect, render
+from django.contrib.auth import login
+from django.contrib.auth.models import User
+
 def create_account(request):
     email = request.session.get('email')
     is_verified = request.session.get('is_verified')
@@ -136,18 +142,43 @@ def create_account(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
 
+        # Basic required field validation
         if not username or not password or not confirm_password:
             messages.error(request, "All fields are required.")
             return redirect('user:create_account')
 
-        if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
+        # Username validations
+        if len(username) < 4 or len(username) > 20:
+            messages.error(request, "Username must be 4-20 characters long.")
             return redirect('user:create_account')
-
+        if not re.match(r'^[A-Za-z0-9_]+$', username):
+            messages.error(request, "Username can only contain letters, numbers, and underscores.")
+            return redirect('user:create_account')
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken.")
             return redirect('user:create_account')
 
+        # Password validations
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return redirect('user:create_account')
+        if len(password) < 8:
+            messages.error(request, "Password must be at least 8 characters long.")
+            return redirect('user:create_account')
+        if not re.search(r'[A-Z]', password):
+            messages.error(request, "Password must contain at least one uppercase letter.")
+            return redirect('user:create_account')
+        if not re.search(r'[a-z]', password):
+            messages.error(request, "Password must contain at least one lowercase letter.")
+            return redirect('user:create_account')
+        if not re.search(r'[0-9]', password):
+            messages.error(request, "Password must contain at least one digit.")
+            return redirect('user:create_account')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Password must contain at least one special character (!@#$%^&* etc).")
+            return redirect('user:create_account')
+
+        # Email uniqueness check
         if User.objects.filter(email=email).exists():
             messages.error(request, "Email already used.")
             return redirect('user:register_email')
@@ -163,6 +194,7 @@ def create_account(request):
         return redirect('user:account_success')
 
     return render(request, 'user/create_account.html')
+
 
 def account_success(request):
     return render(request, 'user/account_success.html')
