@@ -5,7 +5,8 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from .models import CustomUser 
 import re
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
+from django.utils.html import strip_tags
 from django.utils import timezone
 from datetime import timedelta
 from .models import EmailOTP
@@ -106,7 +107,7 @@ def register_otp_verify(request):
             otp_record = EmailOTP.objects.get(email=email)
 
             # Check if OTP is expired
-            if timezone.now() - otp_record.created_at > timedelta(seconds=60):
+            if timezone.now() - otp_record.created_at > timedelta(seconds=300):
                 messages.error(request, "OTP expired. Please resend OTP.")
                   # ✅ Stay on OTP screen
 
@@ -219,20 +220,46 @@ def forgot_password_request(request):
 
 
 def send_otp(email):
+    # Create or update OTP
     otp_obj, _ = EmailOTP.objects.get_or_create(email=email)
     otp_obj.generate_otp()
-    otp_obj.created_at = timezone.now()  
+    otp_obj.created_at = timezone.now()
     otp_obj.save()
 
-   
+    subject = "🔑 Your BabyMuse OTP Verification Code"
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; 
+                border: 1px solid #e2e2e2; border-radius: 10px; padding: 20px; 
+                background-color: #fafafa;">
+        <h2 style="color: #4F46E5; text-align: center;">BabyMuse Verification</h2>
+        <p style="font-size: 16px; color: #333;">Hi 👋,</p>
+        <p style="font-size: 16px; color: #333;">
+            Use the following One-Time Password (OTP) to complete your signup. 
+            This code will expire in <strong>5 minutes</strong>.
+        </p>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <span style="font-size: 28px; font-weight: bold; letter-spacing: 4px; 
+                         color: #ffffff; background: #4F46E5; padding: 10px 20px; 
+                         border-radius: 8px; display: inline-block;">
+                {otp_obj.otp}
+            </span>
+        </div>
 
-   
-    send_mail(
-        subject='Your OTP for BabyMuse Signup',
-        message=f'Your OTP is {otp_obj.otp}',
-        from_email='tpnafeesath90@gmail.com',
-        recipient_list=[email],
-    )
+        <p style="font-size: 14px; color: #666;">
+            If you did not request this, you can safely ignore this email.
+        </p>
+
+        <p style="font-size: 14px; color: #999; text-align: center; margin-top: 20px;">
+            © 2025 BabyMuse. All rights reserved.
+        </p>
+    </div>
+    """
+
+    text_content = strip_tags(html_content)  # fallback for clients that don’t support HTML
+    email_msg = EmailMultiAlternatives(subject, text_content, "tpnafeesath90@gmail.com", [email])
+    email_msg.attach_alternative(html_content, "text/html")
+    email_msg.send()
 
 
 def otp_signup_request(request):
